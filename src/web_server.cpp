@@ -1,5 +1,6 @@
 #include "web_server.h"
 #include "web_assets.h"
+#include "pokemon_sprites.h"
 
 WebServerManager WebManager;
 
@@ -124,8 +125,25 @@ void WebServerManager::setupRoutes() {
         }
     );
 
-    // Catch-all for Captive Portal
+    // Catch-all handler: serves embedded sprites or redirects to root for captive portal
     _server.onNotFound([](AsyncWebServerRequest* request) {
+        String url = request->url();
+        if (url.startsWith("/sprites/")) {
+            int slash = url.lastIndexOf('/');
+            int dot = url.lastIndexOf('.');
+            if (slash >= 0 && dot > slash) {
+                uint16_t num = url.substring(slash + 1, dot).toInt();
+                EmbeddedSprite sp = get_embedded_sprite(num);
+                if (sp.data && sp.size > 0) {
+                    AsyncWebServerResponse *response = request->beginResponse_P(200, "image/png", sp.data, sp.size);
+                    response->addHeader("Cache-Control", "public, max-age=86400");
+                    request->send(response);
+                    return;
+                }
+            }
+            request->send(404, "text/plain", "Sprite not found");
+            return;
+        }
         request->redirect("/");
     });
 }
