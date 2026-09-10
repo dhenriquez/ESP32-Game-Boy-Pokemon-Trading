@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Game Boy Pokémon Trader - Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: rgba(26, 32, 44, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-border-glow: rgba(255, 203, 5, 0.3);
+      --poke-yellow: #ffcb05;
+      --poke-blue: #3c5aa6;
+      --poke-dark-blue: #2a447f;
+      --poke-red: #ee1515;
+      --text: #f7fafc;
+      --text-muted: #94a3b8;
+      --gb-screen-bg: #8bac0f;
+      --gb-screen-dark: #0f380f;
+      --status-red: #ef4444;
+      --status-green: #22c55e;
+      --status-yellow: #eab308;
+      --status-blue: #3b82f6;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+    
+    body {
+      background: radial-gradient(circle at top, #1a202c 0%, #0d1117 100%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 640px;
+    }
+
+    /* Simulation Bar for Preview Mode */
+    .sim-bar {
+      background: rgba(45, 55, 72, 0.9);
+      border: 1px dashed var(--poke-yellow);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .sim-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--poke-yellow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .sim-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .sim-btn {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #e2e8f0;
+      font-size: 0.72rem;
+      padding: 5px 9px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .sim-btn:hover {
+      background: var(--poke-blue);
+      border-color: var(--poke-yellow);
+      color: #fff;
+    }
+
+    /* App Header */
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .brand-title {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 1.15rem;
+      color: var(--poke-yellow);
+      text-shadow: 2px 3px 0px var(--poke-blue), 3px 4px 0px #000;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .brand-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Status Banner */
+    .status-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      transition: border-color 0.3s;
+    }
+    .status-card.connected {
+      border-color: rgba(34, 197, 94, 0.4);
+      box-shadow: 0 10px 25px rgba(34, 197, 94, 0.15);
+    }
+    .status-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .status-pulse {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--status-red);
+      box-shadow: 0 0 10px var(--status-red);
+      transition: all 0.3s;
+    }
+    .status-card.connected .status-pulse {
+      background: var(--status-green);
+      box-shadow: 0 0 12px var(--status-green);
+      animation: pulse 1.6s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.5; transform: scale(0.95); }
+      50% { opacity: 1; transform: scale(1.1); }
+      100% { opacity: 0.5; transform: scale(0.95); }
+    }
+    .status-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .status-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .gen-badge {
+      background: linear-gradient(135deg, var(--poke-blue), var(--poke-dark-blue));
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      letter-spacing: 0.5px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .tab-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 10px 4px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-align: center;
+      transition: all 0.2s;
+      backdrop-filter: blur(8px);
+    }
+    .tab-btn.active {
+      background: rgba(45, 55, 72, 0.9);
+      color: var(--poke-yellow);
+      border-color: var(--poke-yellow);
+      box-shadow: 0 4px 14px rgba(255, 203, 5, 0.15);
+    }
+
+    /* Content Panes */
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; animation: fadeIn 0.25s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Cards */
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    }
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--poke-yellow);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Presets Pills */
+    .presets-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 4px;
+    }
+    .preset-pill {
+      background: rgba(45, 55, 72, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #e2e8f0;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 7px 11px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .preset-pill:hover {
+      background: var(--poke-blue);
+      border-color: var(--poke-yellow);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    /* Pokemon Preview Banner */
+    .pkmn-preview-box {
+      display: flex;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 16px;
+      gap: 16px;
+    }
+    .pkmn-sprite {
+      width: 80px;
+      height: 80px;
+      background: radial-gradient(circle, rgba(255,203,5,0.15) 0%, transparent 70%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pkmn-sprite img {
+      width: 72px;
+      height: 72px;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+    }
+    .pkmn-summary-name {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pkmn-summary-dex {
+      font-size: 0.75rem;
+      color: var(--poke-yellow);
+      font-weight: 700;
+      background: rgba(255, 203, 5, 0.1);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+    .pkmn-summary-details {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Form Inputs */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .form-group {
+      margin-bottom: 14px;
+    }
+    label {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    input, select {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--poke-yellow);
+      box-shadow: 0 0 0 2px rgba(255, 203, 5, 0.15);
+    }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 13px;
+      border-radius: 10px;
+      border: none;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #e53e3e, #c53030);
+      color: white;
+      box-shadow: 0 4px 15px rgba(229, 62, 62, 0.3);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #f56565, #e53e3e);
+      transform: translateY(-1px);
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #38a169, #2f855a);
+      color: white;
+      box-shadow: 0 4px 15px rgba(56, 161, 105, 0.3);
+    }
+    .btn-success:hover {
+      background: linear-gradient(135deg, #48bb78, #38a169);
+      transform: translateY(-1px);
+    }
+
+    /* Console Terminal */
+    .console-box {
+      background: #090d13;
+      color: #38ef7d;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.78rem;
+      padding: 12px;
+      border-radius: 10px;
+      height: 180px;
+      overflow-y: auto;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      line-height: 1.5;
+    }
+
+    /* Switch */
+    .switch-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 10px 14px;
+      border-radius: 8px;
+    }
+
+    /* Notification Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #1e293b;
+      border: 1px solid var(--poke-yellow);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Simulation Panel (For Browser Preview & Testing) -->
+    <div class="sim-bar">
+      <div class="sim-title">
+        <span>🎮 Barra de Simulación del Cable Link (Modo Preview)</span>
+        <span style="color:var(--text-muted); font-size:0.65rem;">Solo pruebas de interfaz</span>
+      </div>
+      <div class="sim-controls">
+        <button class="sim-btn" onclick="simEvent('wait')">🔴 En espera</button>
+        <button class="sim-btn" onclick="simEvent('handshake')">🟡 Handshake OK</button>
+        <button class="sim-btn" onclick="simEvent('trade_room')">🔵 Entrando a Mesa</button>
+        <button class="sim-btn" onclick="simEvent('receive')">📥 Recibir Pokémon de GB</button>
+        <button class="sim-btn" onclick="simEvent('success')">🟢 ¡Trade Completado!</button>
+      </div>
+    </div>
+
+    <header>
+      <div class="brand-title">POKÉMON TRADER</div>
+      <div class="brand-subtitle">ESP32-S3 Game Boy Link Station</div>
+    </header>
+
+    <!-- Status Card -->
+    <div class="status-card" id="statusCard">
+      <div class="status-left">
+        <div class="status-pulse" id="statusDot"></div>
+        <div>
+          <div class="status-title" id="statusTitle">En espera de Game Boy...</div>
+          <div class="status-desc" id="statusDesc">Conecta el cable Link al Game Boy y entra al Club del Cable</div>
+        </div>
+      </div>
+      <div class="gen-badge" id="genBadge">GEN I</div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('tab-inject', this)">⚡ Enviar</button>
+      <button class="tab-btn" onclick="switchTab('tab-receive', this)">🔄 Recibido</button>
+      <button class="tab-btn" onclick="switchTab('tab-monitor', this)">📡 Monitor</button>
+      <button class="tab-btn" onclick="switchTab('tab-config', this)">⚙️ Ajustes</button>
+    </div>
+
+    <!-- TAB 1: INYECTOR / GENERADOR DE POKÉMON -->
+    <div id="tab-inject" class="tab-pane active">
+      <div class="card">
+        <div class="card-title">🚀 Presets de Intercambio Instantáneos</div>
+        <div class="presets-grid">
+          <span class="preset-pill" onclick="applyPreset('gengar')">👻 Haunter ➔ Gengar</span>
+          <span class="preset-pill" onclick="applyPreset('machamp')">💪 Machoke ➔ Machamp</span>
+          <span class="preset-pill" onclick="applyPreset('alakazam')">🥄 Kadabra ➔ Alakazam</span>
+          <span class="preset-pill" onclick="applyPreset('golem')">🪨 Graveler ➔ Golem</span>
+          <span class="preset-pill" onclick="applyPreset('steelix')">🔩 Onix ➔ Steelix</span>
+          <span class="preset-pill" onclick="applyPreset('scizor')">✂️ Scyther ➔ Scizor</span>
+          <span class="preset-pill" onclick="applyPreset('kingdra')">🐉 Seadra ➔ Kingdra</span>
+          <span class="preset-pill" onclick="applyPreset('mew')">✨ Mew de Evento</span>
+          <span class="preset-pill" onclick="applyPreset('celebi')">🍃 Celebi de Evento</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📝 Personalizar Pokémon a Enviar</div>
+
+        <!-- Visual Pokemon Preview Box -->
+        <div class="pkmn-preview-box">
+          <div class="pkmn-sprite">
+            <img id="spriteImg" src="sprites/094.png" alt="Pokemon Sprite" onerror="this.src='sprites/000.png'">
+          </div>
+          <div>
+            <div class="pkmn-summary-name">
+              <span id="previewName">GENGAR</span>
+              <span class="pkmn-summary-dex" id="previewDex">#094</span>
+            </div>
+            <div class="pkmn-summary-details" id="previewDetails">Nivel 50 • Fantasma / Veneno • Max IV/EV</div>
+          </div>
+        </div>
+
+        <form id="pkmnForm" onsubmit="savePokemon(event)">
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Especie (Número Pokédex)</label>
+              <input type="number" id="species" min="1" max="251" value="94" required onchange="updatePreview()">
+            </div>
+            <div class="form-group">
+              <label>Nivel (1 - 100)</label>
+              <input type="number" id="level" min="1" max="100" value="50" required onchange="updatePreview()">
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Mote (Nickname)</label>
+              <input type="text" id="nickname" maxlength="10" value="GENGAR" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+              <label>Entrenador Original (OT)</label>
+              <input type="text" id="ot_name" maxlength="7" value="ESP32">
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label>ID Entrenador (OT ID)</label>
+              <input type="number" id="ot_id" min="0" max="65535" value="42069">
+            </div>
+            <div class="form-group">
+              <label>Presets IV / EV</label>
+              <select id="eviv" onchange="updatePreview()">
+                <option value="5" selected>Max IV & Max EV (Competitivo)</option>
+                <option value="3">Max IV, Zero EV (Sin entrenar)</option>
+                <option value="0">Random IV, Zero EV (Salvaje)</option>
+                <option value="2">Random IV, Max EV</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Ataque 1 (ID)</label>
+              <input type="number" id="m0" min="0" max="251" value="138">
+            </div>
+            <div class="form-group">
+              <label>Ataque 2 (ID)</label>
+              <input type="number" id="m1" min="0" max="251" value="85">
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Ataque 3 (ID)</label>
+              <input type="number" id="m2" min="0" max="251" value="94">
+            </div>
+            <div class="form-group">
+              <label>Ataque 4 (ID)</label>
+              <input type="number" id="m3" min="0" max="251" value="69">
+            </div>
+          </div>
+
+          <div class="form-group" id="gen2Options" style="display:none; margin-top:8px;">
+            <div class="switch-label">
+              <span>✨ Variocolor / Shiny (Gen II)</span>
+              <input type="checkbox" id="shiny" style="width:20px; height:20px;" onchange="updatePreview()">
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label>Objeto Equipado (Item ID)</label>
+              <input type="number" id="item" min="0" max="255" value="0">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="margin-top:10px;">
+            💾 Cargar en la Mesa de Intercambio
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- TAB 2: RECIBIDO / MODIFICAR -->
+    <div id="tab-receive" class="tab-pane">
+      <div class="card">
+        <div class="card-title">📥 Pokémon Recibido de la Game Boy</div>
+        <div id="noReceivedNotice" style="color:var(--text-muted); font-size:0.85rem; line-height: 1.5; padding: 12px 0;">
+          Aún no se ha realizado un intercambio.<br>
+          Cuando la Game Boy confirme el trato, el Pokémon que envíe tu consola aparecerá aquí con sus ataques originales, nivel y estadísticas para que puedas modificarlo y devolvérselo.
+        </div>
+        
+        <div id="receivedData" style="display:none;">
+          <div class="pkmn-preview-box">
+            <div class="pkmn-sprite">
+              <img id="recSpriteImg" src="sprites/155.png" alt="Received Pokemon" onerror="this.src='sprites/000.png'">
+            </div>
+            <div>
+              <div class="pkmn-summary-name">
+                <span id="recSummaryName">CYNDAQUIL</span>
+                <span class="pkmn-summary-dex" id="recSummaryDex">#155</span>
+              </div>
+              <div class="pkmn-summary-details" id="recSummaryDetails">Nivel 5 • Recibido desde Game Boy</div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Especie</label>
+              <input type="text" id="rec_species" readonly>
+            </div>
+            <div class="form-group">
+              <label>Nivel Modificado</label>
+              <input type="number" id="rec_level" min="1" max="100">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Mote</label>
+            <input type="text" id="rec_nick" maxlength="10">
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Ataque 1</label>
+              <input type="number" id="rec_m0">
+            </div>
+            <div class="form-group">
+              <label>Ataque 2</label>
+              <input type="number" id="rec_m1">
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label>Ataque 3</label>
+              <input type="number" id="rec_m2">
+            </div>
+            <div class="form-group">
+              <label>Ataque 4</label>
+              <input type="number" id="rec_m3">
+            </div>
+          </div>
+          <div class="switch-label" style="margin: 14px 0;">
+            <span>✨ Hacer Shiny al devolver a la Game Boy</span>
+            <input type="checkbox" id="rec_shiny" style="width:20px; height:20px;">
+          </div>
+          <button type="button" class="btn btn-success" onclick="returnModifiedPokemon()">
+            📤 Preparar para Devolver a Game Boy
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: MONITOR EN VIVO -->
+    <div id="tab-monitor" class="tab-pane">
+      <div class="card">
+        <div class="card-title">📡 Registro de Eventos del Cable Link</div>
+        <div class="console-box" id="consoleLog">
+          [12:00:00] Servidor web iniciado en 192.168.4.1<br>
+          [12:00:00] Motor de trade en Core 1: CLK=GPIO4, SO=GPIO5, SI=GPIO6<br>
+          [12:00:00] En espera de señal de reloj del Game Boy (Master 8 kHz)...<br>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: AJUSTES & HARDWARE -->
+    <div id="tab-config" class="tab-pane">
+      <div class="card">
+        <div class="card-title">⚙️ Generación de Juego</div>
+        <div class="form-group">
+          <label>Cartucho Destino</label>
+          <select id="genSelect" onchange="changeGeneration()">
+            <option value="1" selected>Generación I (Rojo / Azul / Amarillo)</option>
+            <option value="2">Generación II (Oro / Plata / Cristal)</option>
+          </select>
+        </div>
+        <div style="font-size:0.8rem; color:var(--text-muted); line-height: 1.5;">
+          • <strong>Gen I:</strong> Pokédex de 151 especies. Compatible con Gen I y Time Capsule en Gen II.<br>
+          • <strong>Gen II:</strong> Pokédex de 251 especies. Soporta Shinies, Objetos equipados y Pokérus.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔌 Esquema de Cableado (ESP32-S3 SuperMini)</div>
+        <div style="font-size:0.82rem; color:var(--text-muted); line-height: 1.6;">
+          <strong>Conexión con Game Boy Link Cable:</strong><br>
+          • <strong>Pin 5 (CLK - Reloj Game Boy):</strong> Conectar a <strong>GPIO 4</strong> con divisor de voltaje (1kΩ / 2kΩ) o Level Shifter.<br>
+          • <strong>Pin 2 (SO - Serial Out Game Boy):</strong> Conectar a <strong>GPIO 5</strong> con divisor de voltaje.<br>
+          • <strong>Pin 3 (SI - Serial In Game Boy):</strong> Conectar directamente a <strong>GPIO 6</strong> (3.3V directo).<br>
+          • <strong>Pin 6 (GND - Masa):</strong> Conectar a <strong>GND</strong> del ESP32 (Masa común obligatoria).<br>
+          • <strong>Pin 1 (VDD):</strong> ¡NO conectar! El ESP32 se alimenta por su propio cable <strong>USB-C</strong>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">¡Acción realizada con éxito!</div>
+
+  <script>
+    let currentGen = 1;
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function log(msg) {
+      const d = new Date();
+      const time = d.toTimeString().split(' ')[0];
+      const box = document.getElementById('consoleLog');
+      box.innerHTML += `[${time}] ${msg}<br>`;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    function updatePreview() {
+      const sp = parseInt(document.getElementById('species').value) || 1;
+      const nick = document.getElementById('nickname').value || 'POKÉMON';
+      const lvl = document.getElementById('level').value || 50;
+      const shiny = document.getElementById('shiny').checked;
+
+      document.getElementById('previewName').textContent = nick.toUpperCase();
+      document.getElementById('previewDex').textContent = '#' + String(sp).padStart(3, '0');
+      document.getElementById('previewDetails').textContent = `Nivel ${lvl} • ${shiny ? '✨ Shiny • ' : ''}ID ${sp}`;
+
+      const spriteBox = document.querySelector('.pkmn-sprite');
+      if (shiny) {
+        spriteBox.classList.add('shiny');
+      } else {
+        spriteBox.classList.remove('shiny');
+      }
+
+      // Load sprite from local Flipper Zero sprites folder
+      const spriteFilename = "sprites/" + String(sp).padStart(3, '0') + ".png";
+      document.getElementById('spriteImg').src = spriteFilename;
+    }
+
+    function changeGeneration() {
+      currentGen = parseInt(document.getElementById('genSelect').value);
+      document.getElementById('genBadge').textContent = currentGen === 1 ? 'GEN I' : 'GEN II';
+      document.getElementById('gen2Options').style.display = currentGen === 2 ? 'block' : 'none';
+      log(`Generación cambiada a: Gen ${currentGen === 1 ? 'I (Kanto)' : 'II (Johto)'}`);
+      showToast(`Cambiado a Generación ${currentGen === 1 ? 'I' : 'II'}`);
+      updatePreview();
+    }
+
+    function applyPreset(preset) {
+      if (preset === 'gengar') {
+        document.getElementById('species').value = 94;
+        document.getElementById('nickname').value = 'GENGAR';
+        document.getElementById('level').value = 50;
+        document.getElementById('m0').value = 138;
+        document.getElementById('m1').value = 85;
+        document.getElementById('m2').value = 94;
+        document.getElementById('m3').value = 69;
+      } else if (preset === 'machamp') {
+        document.getElementById('species').value = 68;
+        document.getElementById('nickname').value = 'MACHAMP';
+        document.getElementById('level').value = 50;
+        document.getElementById('m0').value = 22;
+        document.getElementById('m1').value = 70;
+        document.getElementById('m2').value = 90;
+        document.getElementById('m3').value = 25;
+      } else if (preset === 'alakazam') {
+        document.getElementById('species').value = 65;
+        document.getElementById('nickname').value = 'ALAKAZAM';
+        document.getElementById('level').value = 50;
+        document.getElementById('m0').value = 94;
+        document.getElementById('m1').value = 105;
+        document.getElementById('m2').value = 115;
+        document.getElementById('m3').value = 129;
+      } else if (preset === 'golem') {
+        document.getElementById('species').value = 76;
+        document.getElementById('nickname').value = 'GOLEM';
+        document.getElementById('level').value = 50;
+        document.getElementById('m0').value = 89;
+        document.getElementById('m1').value = 88;
+        document.getElementById('m2').value = 153;
+        document.getElementById('m3').value = 23;
+      } else if (preset === 'steelix') {
+        document.getElementById('genSelect').value = 2;
+        changeGeneration();
+        document.getElementById('species').value = 208;
+        document.getElementById('nickname').value = 'STEELIX';
+        document.getElementById('level').value = 50;
+        document.getElementById('m0').value = 231;
+        document.getElementById('m1').value = 89;
+        document.getElementById('m2').value = 157;
+        document.getElementById('m3').value = 23;
+      } else if (preset === 'scizor') {
+        document.getElementById('genSelect').value = 2;
+        changeGeneration();
+        document.getElementById('species').value = 212;
+        document.getElementById('nickname').value = 'SCIZOR';
+        document.getElementById('level').value = 50;
+        document.getElementById('m0').value = 232;
+        document.getElementById('m1').value = 14;
+        document.getElementById('m2').value = 97;
+        document.getElementById('m3').value = 210;
+      } else if (preset === 'kingdra') {
+        document.getElementById('genSelect').value = 2;
+        changeGeneration();
+        document.getElementById('species').value = 230;
+        document.getElementById('nickname').value = 'KINGDRA';
+        document.getElementById('level').value = 50;
+        document.getElementById('m0').value = 56;
+        document.getElementById('m1').value = 225;
+        document.getElementById('m2').value = 82;
+        document.getElementById('m3').value = 61;
+      } else if (preset === 'mew') {
+        document.getElementById('species').value = 151;
+        document.getElementById('nickname').value = 'MEW';
+        document.getElementById('ot_name').value = 'MYSTRY';
+        document.getElementById('ot_id').value = 69;
+        document.getElementById('level').value = 30;
+        document.getElementById('m0').value = 1;
+        document.getElementById('m1').value = 104;
+        document.getElementById('m2').value = 129;
+        document.getElementById('m3').value = 94;
+      } else if (preset === 'celebi') {
+        document.getElementById('genSelect').value = 2;
+        changeGeneration();
+        document.getElementById('species').value = 251;
+        document.getElementById('nickname').value = 'CELEBI';
+        document.getElementById('ot_name').value = 'WIN2011';
+        document.getElementById('ot_id').value = 1121;
+        document.getElementById('level').value = 50;
+        document.getElementById('m0').value = 73;
+        document.getElementById('m1').value = 105;
+        document.getElementById('m2').value = 113;
+        document.getElementById('m3').value = 247;
+      }
+      updatePreview();
+      log(`Preset aplicado: ${preset}`);
+      showToast(`Preset ${preset.toUpperCase()} aplicado`);
+    }
+
+    function savePokemon(e) {
+      e.preventDefault();
+      const nick = document.getElementById('nickname').value;
+      const lvl = document.getElementById('level').value;
+      showToast(`¡${nick} (Nivel ${lvl}) cargado en la mesa!`);
+      log(`Pokémon listo para enviar: ${nick} (Nivel ${lvl})`);
+    }
+
+    function returnModifiedPokemon() {
+      const nick = document.getElementById('rec_nick').value;
+      showToast(`¡${nick} preparado para devolver a Game Boy!`);
+      log(`Pokémon modificado listo para retorno: ${nick}`);
+    }
+
+    // Simulation Bar triggers (For Preview Mode)
+    function simEvent(type) {
+      const card = document.getElementById('statusCard');
+      const dot = document.getElementById('statusDot');
+      const title = document.getElementById('statusTitle');
+      const desc = document.getElementById('statusDesc');
+
+      if (type === 'wait') {
+        card.classList.remove('connected');
+        dot.style.background = 'var(--status-red)';
+        title.textContent = 'En espera de Game Boy...';
+        desc.textContent = 'Conecta el cable Link al Game Boy y entra al Club del Cable';
+        log('Estado: Esperando conexión del cable Link...');
+      } else if (type === 'handshake') {
+        card.classList.add('connected');
+        dot.style.background = 'var(--status-yellow)';
+        title.textContent = 'Conexión Game Boy Detectada';
+        desc.textContent = 'Sincronizando reloj Master/Slave (8 kHz)...';
+        log('Handshake: 0x01 (PKMN_MASTER) detectado -> respondiendo 0x02 (PKMN_SLAVE)');
+      } else if (type === 'trade_room') {
+        card.classList.add('connected');
+        dot.style.background = 'var(--status-blue)';
+        title.textContent = 'En la Sala de Intercambio';
+        desc.textContent = 'Listo en la mesa de trade. Selecciona el Pokémon en tu Game Boy.';
+        log('Protocolo: Ambos dispositivos entraron a la sala de intercambio (0xD4)');
+      } else if (type === 'receive') {
+        document.getElementById('noReceivedNotice').style.display = 'none';
+        document.getElementById('receivedData').style.display = 'block';
+        document.getElementById('recSpriteImg').src = 'sprites/155.png';
+        document.getElementById('recSummaryName').textContent = 'CYNDAQUIL';
+        document.getElementById('recSummaryDex').textContent = '#155';
+        document.getElementById('recSummaryDetails').textContent = 'Nivel 5 • Recibido desde Game Boy';
+        document.getElementById('rec_species').value = 'Cyndaquil (ID 155)';
+        document.getElementById('rec_level').value = 5;
+        document.getElementById('rec_nick').value = 'CYNDAQUIL';
+        document.getElementById('rec_m0').value = 33; // Tackle
+        document.getElementById('rec_m1').value = 43; // Leer
+        document.getElementById('rec_m2').value = 52; // Ember
+        document.getElementById('rec_m3').value = 0;
+        document.getElementById('rec_shiny').checked = false;
+        
+        switchTab('tab-receive', document.querySelectorAll('.tab-btn')[1]);
+        log('📥 Datos recibidos de Game Boy: Cyndaquil (Nivel 5) recibido con éxito');
+        showToast('¡Pokémon recibido de Game Boy listo para editar!');
+      } else if (type === 'success') {
+        card.classList.add('connected');
+        dot.style.background = 'var(--status-green)';
+        title.textContent = '¡Intercambio Completado!';
+        desc.textContent = 'Datos sincronizados exitosamente con la Game Boy.';
+        log('✅ Trade finalizado con éxito. Bloque de guardado re-sincronizado.');
+        showToast('¡Intercambio completado con éxito!');
+      }
+    }
+  </script>
+</body>
+</html>

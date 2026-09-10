@@ -1,5 +1,5 @@
-#include " named_list.h\
-#include \type_nl.h\
+#include "item_nl.h"
+#include "type_nl.h"
 
 const NamedList item_list[] = {
     {"No Item", 0x00, GEN_II},

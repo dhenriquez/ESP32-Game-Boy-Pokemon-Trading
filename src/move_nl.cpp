@@ -1,5 +1,5 @@
-#include " named_list.h\
-#include \type_nl.h\
+#include "move_nl.h"
+#include "type_nl.h"
 
 const NamedList move_list[] = {
     {"No Move", 0x00, (GEN_I | GEN_II)},
