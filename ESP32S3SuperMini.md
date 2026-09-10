@@ -78,3 +78,6 @@ Si desea utilizar una antena externa, puede conectar una antena externa según l
     <img src="./docs/images/img-9.avif" width="400" />
     <br />
 </p>
+
+## Link compra ESP32-S3-SuperMini
+https://es.aliexpress.com/item/1005007524137218.html
