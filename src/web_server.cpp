@@ -1,6 +1,7 @@
 #include "web_server.h"
 #include "web_assets.h"
 #include "pokemon_sprites.h"
+#include "logo_data.h"
 
 WebServerManager WebManager;
 
@@ -36,10 +37,19 @@ void WebServerManager::setupWebSocket() {
 }
 
 void WebServerManager::setupRoutes() {
-    // Root UI
+    // Root UI (streamed directly from Flash PROGMEM without heap allocation)
     _server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
-        request->send(200, "text/html", INDEX_HTML);
+        request->send_P(200, "text/html", (const uint8_t*)INDEX_HTML, sizeof(INDEX_HTML) - 1);
     });
+
+    // Logo image
+    auto serveLogo = [](AsyncWebServerRequest* request) {
+        AsyncWebServerResponse *response = request->beginResponse_P(200, "image/png", LOGO_PNG, sizeof(LOGO_PNG));
+        response->addHeader("Cache-Control", "public, max-age=86400");
+        request->send(response);
+    };
+    _server.on("/logo.png", HTTP_GET, serveLogo);
+    _server.on("/docs/images/logo.png", HTTP_GET, serveLogo);
 
     // Captive portal probes redirection
     auto captiveRedirect = [](AsyncWebServerRequest* request) {

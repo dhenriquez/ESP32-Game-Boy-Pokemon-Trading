@@ -51,6 +51,14 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
       text-align: center;
       margin-bottom: 16px;
     }
+        .brand-logo {
+      max-width: 250px;
+      width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto 8px auto;
+      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
+    }
     .brand-title {
       font-family: 'Press Start 2P', cursive, monospace;
       font-size: 1.1rem;
@@ -359,8 +367,8 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <body>
   <div class="container">
     <header>
-      <div class="brand-title">POKÉMON TRADER</div>
-      <div class="brand-subtitle">ESP32-S3 Game Boy Link Station</div>
+      <img src="/logo.png" alt="GB-PokeTrader" class="brand-logo">
+      <div class="brand-subtitle">ESP32-S3 Game Boy Link Station - @dhenriquez</div>
     </header>
 
     <div class="status-card" id="statusCard">
@@ -416,8 +424,8 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <form id="pkmnForm" onsubmit="savePokemon(event)">
           <div class="grid-2">
             <div class="form-group">
-              <label>Especie (Número Pokédex)</label>
-              <input type="number" id="species" min="1" max="251" value="94" required onchange="updatePreview()">
+              <label>Especie</label>
+              <select id="species" required onchange="onSpeciesChange()"></select>
             </div>
             <div class="form-group">
               <label>Nivel (1 - 100)</label>
@@ -454,22 +462,22 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
           <div class="grid-2">
             <div class="form-group">
-              <label>Ataque 1 (ID)</label>
-              <input type="number" id="m0" min="0" max="251" value="138">
+              <label>Ataque 1</label>
+              <input type="text" id="m0" list="moves_list" value="Dream Eater" autocomplete="off" placeholder="Buscar ataque...">
             </div>
             <div class="form-group">
-              <label>Ataque 2 (ID)</label>
-              <input type="number" id="m1" min="0" max="251" value="85">
+              <label>Ataque 2</label>
+              <input type="text" id="m1" list="moves_list" value="Thunderbolt" autocomplete="off" placeholder="Buscar ataque...">
             </div>
           </div>
           <div class="grid-2">
             <div class="form-group">
-              <label>Ataque 3 (ID)</label>
-              <input type="number" id="m2" min="0" max="251" value="94">
+              <label>Ataque 3</label>
+              <input type="text" id="m2" list="moves_list" value="Psychic" autocomplete="off" placeholder="Buscar ataque...">
             </div>
             <div class="form-group">
-              <label>Ataque 4 (ID)</label>
-              <input type="number" id="m3" min="0" max="251" value="69">
+              <label>Ataque 4</label>
+              <input type="text" id="m3" list="moves_list" value="Seismic Toss" autocomplete="off" placeholder="Buscar ataque...">
             </div>
           </div>
 
@@ -479,8 +487,8 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
               <input type="checkbox" id="shiny" style="width:20px; height:20px;" onchange="updatePreview()">
             </div>
             <div class="form-group" style="margin-top:12px;">
-              <label>Objeto Equipado (Item ID)</label>
-              <input type="number" id="item" min="0" max="255" value="0">
+              <label>Objeto Equipado (Gen II)</label>
+              <select id="item"></select>
             </div>
           </div>
 
@@ -531,21 +539,21 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
           <div class="grid-2">
             <div class="form-group">
               <label>Ataque 1</label>
-              <input type="number" id="rec_m0">
+              <input type="text" id="rec_m0" list="moves_list" autocomplete="off" placeholder="Buscar ataque...">
             </div>
             <div class="form-group">
               <label>Ataque 2</label>
-              <input type="number" id="rec_m1">
+              <input type="text" id="rec_m1" list="moves_list" autocomplete="off" placeholder="Buscar ataque...">
             </div>
           </div>
           <div class="grid-2">
             <div class="form-group">
               <label>Ataque 3</label>
-              <input type="number" id="rec_m2">
+              <input type="text" id="rec_m2" list="moves_list" autocomplete="off" placeholder="Buscar ataque...">
             </div>
             <div class="form-group">
               <label>Ataque 4</label>
-              <input type="number" id="rec_m3">
+              <input type="text" id="rec_m3" list="moves_list" autocomplete="off" placeholder="Buscar ataque...">
             </div>
           </div>
           <div class="switch-label" style="margin: 14px 0;">
@@ -597,10 +605,91 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
     </div>
   </div>
 
+  <datalist id="moves_list"></datalist>
   <div class="toast" id="toast">¡Acción realizada con éxito!</div>
 
   <script>
     let currentGen = 1;
+
+    const POKEMON_NAMES = ["Bulbasaur", "Ivysaur", "Venusaur", "Charmander", "Charmeleon", "Charizard", "Squirtle", "Wartortle", "Blastoise", "Caterpie", "Metapod", "Butterfree", "Weedle", "Kakuna", "Beedrill", "Pidgey", "Pidgeotto", "Pidgeot", "Rattata", "Raticate", "Spearow", "Fearow", "Ekans", "Arbok", "Pikachu", "Raichu", "Sandshrew", "Sandslash", "Nidoran\\200", "Nidorina", "Nidoqueen", "Nidoran\\201", "Nidorino", "Nidoking", "Clefairy", "Clefable", "Vulpix", "Ninetales", "Jigglypuff", "Wigglytuff", "Zubat", "Golbat", "Oddish", "Gloom", "Vileplume", "Paras", "Parasect", "Venonat", "Venomoth", "Diglett", "Dugtrio", "Meowth", "Persian", "Psyduck", "Golduck", "Mankey", "Primeape", "Growlithe", "Arcanine", "Poliwag", "Poliwhirl", "Poliwrath", "Abra", "Kadabra", "Alakazam", "Machop", "Machoke", "Machamp", "Bellsprout", "Weepinbell", "Victreebel", "Tentacool", "Tentacruel", "Geodude", "Graveler", "Golem", "Ponyta", "Rapidash", "Slowpoke", "Slowbro", "Magnemite", "Magneton", "Farfetch'd", "Doduo", "Dodrio", "Seel", "Dewgong", "Grimer", "Muk", "Shellder", "Cloyster", "Gastly", "Haunter", "Gengar", "Onix", "Drowzee", "Hypno", "Krabby", "Kingler", "Voltorb", "Electrode", "Exeggcute", "Exeggutor", "Cubone", "Marowak", "Hitmonlee", "Hitmonchan", "Lickitung", "Koffing", "Weezing", "Rhyhorn", "Rhydon", "Chansey", "Tangela", "Kangaskhan", "Horsea", "Seadra", "Goldeen", "Seaking", "Staryu", "Starmie", "Mr.Mime", "Scyther", "Jynx", "Electabuzz", "Magmar", "Pinsir", "Tauros", "Magikarp", "Gyarados", "Lapras", "Ditto", "Eevee", "Vaporeon", "Jolteon", "Flareon", "Porygon", "Omanyte", "Omastar", "Kabuto", "Kabutops", "Aerodactyl", "Snorlax", "Articuno", "Zapdos", "Moltres", "Dratini", "Dragonair", "Dragonite", "Mewtwo", "Mew", "Chikorita", "Bayleef", "Meganium", "Cyndaquil", "Quilava", "Typhlosion", "Totodile", "Croconaw", "Feraligatr", "Sentret", "Furret", "Hoothoot", "Noctowl", "Ledyba", "Ledian", "Spinarak", "Ariados", "Crobat", "Chinchou", "Lanturn", "Pichu", "Cleffa", "Igglybuff", "Togepi", "Togetic", "Natu", "Xatu", "Mareep", "Flaaffy", "Ampharos", "Bellossom", "Marill", "Azumarill", "Sudowoodo", "Politoed", "Hoppip", "Skiploom", "Jumpluff", "Aipom", "Sunkern", "Sunflora", "Yanma", "Wooper", "Quagsire", "Espeon", "Umbreon", "Murkrow", "Slowking", "Misdreavus", "Unown", "Wobbuffet", "Girafarig", "Pineco", "Forretress", "Dunsparce", "Gligar", "Steelix", "Snubbull", "Granbull", "Qwilfish", "Scizor", "Shuckle", "Heracross", "Sneasel", "Teddiursa", "Ursaring", "Slugma", "Magcargo", "Swinub", "Piloswine", "Corsola", "Remoraid", "Octillery", "Delibird", "Mantine", "Skarmory", "Houndour", "Houndoom", "Kingdra", "Phanpy", "Donphan", "Porygon2", "Stantler", "Smeargle", "Tyrogue", "Hitmontop", "Smoochum", "Elekid", "Magby", "Miltank", "Blissey", "Raikou", "Entei", "Suicune", "Larvitar", "Pupitar", "Tyranitar", "Lugia", "Ho-Oh", "Celebi"];
+    const ALL_MOVES = [{"name": "No Move","id": 0,"gen": 1},{"name": "Absorb","id": 71,"gen": 1},{"name": "Acid","id": 51,"gen": 1},{"name": "Acid Armor","id": 151,"gen": 1},{"name": "Aeroblast","id": 177,"gen": 2},{"name": "Agility","id": 97,"gen": 1},{"name": "Amnesia","id": 133,"gen": 1},{"name": "Ancient Power","id": 246,"gen": 2},{"name": "Attract","id": 213,"gen": 2},{"name": "Aurora Beam","id": 62,"gen": 1},{"name": "Barrage","id": 140,"gen": 1},{"name": "Barrier","id": 112,"gen": 1},{"name": "Baton Pass","id": 226,"gen": 2},{"name": "Beat Up","id": 251,"gen": 2},{"name": "Belly Drum","id": 187,"gen": 2},{"name": "Bide","id": 117,"gen": 1},{"name": "Bind","id": 20,"gen": 1},{"name": "Bite","id": 44,"gen": 1},{"name": "Blizzard","id": 59,"gen": 1},{"name": "Body Slam","id": 34,"gen": 1},{"name": "Bone Club","id": 125,"gen": 1},{"name": "Bone Rush","id": 198,"gen": 2},{"name": "Boomerang","id": 155,"gen": 1},{"name": "Bubble","id": 145,"gen": 1},{"name": "Bubblebeam","id": 61,"gen": 1},{"name": "Charm","id": 204,"gen": 2},{"name": "Clamp","id": 128,"gen": 1},{"name": "Comet Punch","id": 4,"gen": 1},{"name": "Confuse Ray","id": 109,"gen": 1},{"name": "Confusion","id": 93,"gen": 1},{"name": "Constrict","id": 132,"gen": 1},{"name": "Conversion","id": 160,"gen": 1},{"name": "Conversion 2","id": 176,"gen": 2},{"name": "Cotton Spore","id": 178,"gen": 2},{"name": "Counter","id": 68,"gen": 1},{"name": "Crabhammer","id": 152,"gen": 1},{"name": "Cross Chop","id": 238,"gen": 2},{"name": "Crunch","id": 242,"gen": 2},{"name": "Curse","id": 174,"gen": 2},{"name": "Cut","id": 15,"gen": 1},{"name": "Defense Curl","id": 111,"gen": 1},{"name": "Destiny Bond","id": 194,"gen": 2},{"name": "Detect","id": 197,"gen": 2},{"name": "Dig","id": 91,"gen": 1},{"name": "Disable","id": 50,"gen": 1},{"name": "Dizzy Punch","id": 146,"gen": 1},{"name": "Double Kick","id": 24,"gen": 1},{"name": "Double Team","id": 104,"gen": 1},{"name": "Double-Edge","id": 38,"gen": 1},{"name": "Doubleslap","id": 3,"gen": 1},{"name": "Dragon Breath","id": 225,"gen": 2},{"name": "Dragon Rage","id": 82,"gen": 1},{"name": "Dream Eater","id": 138,"gen": 1},{"name": "Drill Peck","id": 65,"gen": 1},{"name": "Dynamic Punch","id": 223,"gen": 2},{"name": "Earthquake","id": 89,"gen": 1},{"name": "Egg Bomb","id": 121,"gen": 1},{"name": "Ember","id": 52,"gen": 1},{"name": "Encore","id": 227,"gen": 2},{"name": "Endure","id": 203,"gen": 2},{"name": "Explosion","id": 153,"gen": 1},{"name": "Extreme Speed","id": 245,"gen": 2},{"name": "False Swipe","id": 206,"gen": 2},{"name": "Feint Attack","id": 185,"gen": 2},{"name": "Fire Blast","id": 126,"gen": 1},{"name": "Fire Punch","id": 7,"gen": 1},{"name": "Fire Spin","id": 83,"gen": 1},{"name": "Fissure","id": 90,"gen": 1},{"name": "Flail","id": 175,"gen": 2},{"name": "Flame Wheel","id": 172,"gen": 2},{"name": "Flamethrower","id": 53,"gen": 1},{"name": "Flash","id": 148,"gen": 1},{"name": "Fly","id": 19,"gen": 1},{"name": "Focus Energy","id": 116,"gen": 1},{"name": "Foresight","id": 193,"gen": 2},{"name": "Frustration","id": 218,"gen": 2},{"name": "Fury Attack","id": 31,"gen": 1},{"name": "Fury Cutter","id": 210,"gen": 2},{"name": "Fury Swipes","id": 154,"gen": 1},{"name": "Future Sight","id": 248,"gen": 2},{"name": "Giga Drain","id": 202,"gen": 2},{"name": "Glare","id": 137,"gen": 1},{"name": "Growl","id": 45,"gen": 1},{"name": "Growth","id": 74,"gen": 1},{"name": "Guillotine","id": 12,"gen": 1},{"name": "Gust","id": 16,"gen": 1},{"name": "Harden","id": 106,"gen": 1},{"name": "Haze","id": 114,"gen": 1},{"name": "Headbutt","id": 29,"gen": 1},{"name": "Heal Bell","id": 215,"gen": 2},{"name": "Hi Jump Kick","id": 136,"gen": 1},{"name": "Hidden Power","id": 237,"gen": 2},{"name": "Horn Attack","id": 30,"gen": 1},{"name": "Horn Drill","id": 32,"gen": 1},{"name": "Hydro Pump","id": 56,"gen": 1},{"name": "Hyper Beam","id": 63,"gen": 1},{"name": "Hyper Fang","id": 158,"gen": 1},{"name": "Hypnosis","id": 95,"gen": 1},{"name": "Ice Beam","id": 58,"gen": 1},{"name": "Ice Punch","id": 8,"gen": 1},{"name": "Icy Wind","id": 196,"gen": 2},{"name": "Iron Tail","id": 231,"gen": 2},{"name": "Jump Kick","id": 26,"gen": 1},{"name": "Karate Chop","id": 2,"gen": 1},{"name": "Kinesis","id": 134,"gen": 1},{"name": "Leech Life","id": 141,"gen": 1},{"name": "Leech Seed","id": 73,"gen": 1},{"name": "Leer","id": 43,"gen": 1},{"name": "Lick","id": 122,"gen": 1},{"name": "Light Screen","id": 113,"gen": 1},{"name": "Lock-On","id": 199,"gen": 2},{"name": "Lovely Kiss","id": 142,"gen": 1},{"name": "Low Kick","id": 67,"gen": 1},{"name": "Mach Punch","id": 183,"gen": 2},{"name": "Magnitude","id": 222,"gen": 2},{"name": "Mean Look","id": 212,"gen": 2},{"name": "Meditate","id": 96,"gen": 1},{"name": "Mega Drain","id": 72,"gen": 1},{"name": "Mega Kick","id": 25,"gen": 1},{"name": "Mega Punch","id": 5,"gen": 1},{"name": "Megahorn","id": 224,"gen": 2},{"name": "Metal Claw","id": 232,"gen": 2},{"name": "Metronome","id": 118,"gen": 1},{"name": "Milk Drink","id": 208,"gen": 2},{"name": "Mimic","id": 102,"gen": 1},{"name": "Mind Reader","id": 170,"gen": 2},{"name": "Minimize","id": 107,"gen": 1},{"name": "Mirror Coat","id": 243,"gen": 2},{"name": "Mirror Move","id": 119,"gen": 1},{"name": "Mist","id": 54,"gen": 1},{"name": "Moonlight","id": 236,"gen": 2},{"name": "Morning Sun","id": 234,"gen": 2},{"name": "Mud-Slap","id": 189,"gen": 2},{"name": "Night Shade","id": 101,"gen": 1},{"name": "Nightmare","id": 171,"gen": 2},{"name": "Octazooka","id": 190,"gen": 2},{"name": "Outrage","id": 200,"gen": 2},{"name": "Pain Split","id": 220,"gen": 2},{"name": "Pay Day","id": 6,"gen": 1},{"name": "Peck","id": 64,"gen": 1},{"name": "Perish Song","id": 195,"gen": 2},{"name": "Petal Dance","id": 80,"gen": 1},{"name": "Pin Missile","id": 42,"gen": 1},{"name": "Poison Gas","id": 139,"gen": 1},{"name": "Poison Sting","id": 40,"gen": 1},{"name": "Poisonpowder","id": 77,"gen": 1},{"name": "Pound","id": 1,"gen": 1},{"name": "Powder Snow","id": 181,"gen": 2},{"name": "Present","id": 217,"gen": 2},{"name": "Protect","id": 182,"gen": 2},{"name": "Psybeam","id": 60,"gen": 1},{"name": "Psych Up","id": 244,"gen": 2},{"name": "Psychic","id": 94,"gen": 1},{"name": "Psywave","id": 149,"gen": 1},{"name": "Pursuit","id": 228,"gen": 2},{"name": "Quick Attack","id": 98,"gen": 1},{"name": "Rage","id": 99,"gen": 1},{"name": "Rain Dance","id": 240,"gen": 2},{"name": "Rapid Spin","id": 229,"gen": 2},{"name": "Razor Leaf","id": 75,"gen": 1},{"name": "Razor Wind","id": 13,"gen": 1},{"name": "Recover","id": 105,"gen": 1},{"name": "Reflect","id": 115,"gen": 1},{"name": "Rest","id": 156,"gen": 1},{"name": "Return","id": 216,"gen": 2},{"name": "Reversal","id": 179,"gen": 2},{"name": "Roar","id": 46,"gen": 1},{"name": "Rock Slide","id": 157,"gen": 1},{"name": "Rock Smash","id": 249,"gen": 2},{"name": "Rock Throw","id": 88,"gen": 1},{"name": "Rolling Kick","id": 27,"gen": 1},{"name": "Rollout","id": 205,"gen": 2},{"name": "Sacred Fire","id": 221,"gen": 2},{"name": "Safeguard","id": 219,"gen": 2},{"name": "Sand Attack","id": 28,"gen": 1},{"name": "Sandstorm","id": 201,"gen": 2},{"name": "Scary Face","id": 184,"gen": 2},{"name": "Scratch","id": 10,"gen": 1},{"name": "Screech","id": 103,"gen": 1},{"name": "Seismic Toss","id": 69,"gen": 1},{"name": "Selfdestruct","id": 120,"gen": 1},{"name": "Shadow Ball","id": 247,"gen": 2},{"name": "Sharpen","id": 159,"gen": 1},{"name": "Sing","id": 47,"gen": 1},{"name": "Sketch","id": 166,"gen": 2},{"name": "Skull Bash","id": 130,"gen": 1},{"name": "Sky Attack","id": 143,"gen": 1},{"name": "Slam","id": 21,"gen": 1},{"name": "Slash","id": 163,"gen": 1},{"name": "Sleep Powder","id": 79,"gen": 1},{"name": "Sleep Talk","id": 214,"gen": 2},{"name": "Sludge","id": 124,"gen": 1},{"name": "Sludge Bomb","id": 188,"gen": 2},{"name": "Smog","id": 123,"gen": 1},{"name": "Smokescreen","id": 108,"gen": 1},{"name": "Snore","id": 173,"gen": 2},{"name": "Softboiled","id": 135,"gen": 1},{"name": "Solar Beam","id": 76,"gen": 1},{"name": "Sonicboom","id": 49,"gen": 1},{"name": "Spark","id": 209,"gen": 2},{"name": "Spider Web","id": 169,"gen": 2},{"name": "Spike Cannon","id": 131,"gen": 1},{"name": "Spikes","id": 191,"gen": 2},{"name": "Spite","id": 180,"gen": 2},{"name": "Splash","id": 150,"gen": 1},{"name": "Spore","id": 147,"gen": 1},{"name": "Steel Wing","id": 211,"gen": 2},{"name": "Stomp","id": 23,"gen": 1},{"name": "Strength","id": 70,"gen": 1},{"name": "String Shot","id": 81,"gen": 1},{"name": "Struggle","id": 165,"gen": 1},{"name": "Stun Spore","id": 78,"gen": 1},{"name": "Submission","id": 66,"gen": 1},{"name": "Substitute","id": 164,"gen": 1},{"name": "Sunny Day","id": 241,"gen": 2},{"name": "Super Fang","id": 162,"gen": 1},{"name": "Supersonic","id": 48,"gen": 1},{"name": "Surf","id": 57,"gen": 1},{"name": "Swagger","id": 207,"gen": 2},{"name": "Sweet Kiss","id": 186,"gen": 2},{"name": "Sweet Scent","id": 230,"gen": 2},{"name": "Swift","id": 129,"gen": 1},{"name": "Swords Dance","id": 14,"gen": 1},{"name": "Synthesis","id": 235,"gen": 2},{"name": "Tackle","id": 33,"gen": 1},{"name": "Tail Whip","id": 39,"gen": 1},{"name": "Take Down","id": 36,"gen": 1},{"name": "Teleport","id": 100,"gen": 1},{"name": "Thief","id": 168,"gen": 2},{"name": "Thrash","id": 37,"gen": 1},{"name": "Thunder","id": 87,"gen": 1},{"name": "Thunder Wave","id": 86,"gen": 1},{"name": "Thunderbolt","id": 85,"gen": 1},{"name": "Thunderpunch","id": 9,"gen": 1},{"name": "Thundershock","id": 84,"gen": 1},{"name": "Toxic","id": 92,"gen": 1},{"name": "Transform","id": 144,"gen": 1},{"name": "Tri Attack","id": 161,"gen": 1},{"name": "Triple Kick","id": 167,"gen": 2},{"name": "Twineedle","id": 41,"gen": 1},{"name": "Twister","id": 239,"gen": 2},{"name": "Vicegrip","id": 11,"gen": 1},{"name": "Vine Whip","id": 22,"gen": 1},{"name": "Vital Throw","id": 233,"gen": 2},{"name": "Water Gun","id": 55,"gen": 1},{"name": "Waterfall","id": 127,"gen": 1},{"name": "Whirlpool","id": 250,"gen": 2},{"name": "Whirlwind","id": 18,"gen": 1},{"name": "Wing Attack","id": 17,"gen": 1},{"name": "Withdraw","id": 110,"gen": 1},{"name": "Wrap","id": 35,"gen": 1},{"name": "Zap Cannon","id": 192,"gen": 2}];
+    const MOVE_NAME_TO_ID = {};
+    const MOVE_ID_TO_NAME = {};
+    ALL_MOVES.forEach(m => {
+      MOVE_NAME_TO_ID[m.name.toLowerCase()] = m.id;
+      MOVE_ID_TO_NAME[m.id] = m.name;
+    });
+
+    function moveIdToName(id) {
+      if (id === 0 || id === undefined || id === null) return "No Move";
+      return MOVE_ID_TO_NAME[id] || ("Move #" + id);
+    }
+
+    function moveToId(val) {
+      if (!val) return 0;
+      if (typeof val === "number") return (val >= 0 && val <= 255) ? val : 0;
+      const trimmed = String(val).trim();
+      if (!trimmed) return 0;
+      if (/^\d+$/.test(trimmed)) {
+        const num = parseInt(trimmed, 10);
+        return (num >= 0 && num <= 255) ? num : 0;
+      }
+      const id = MOVE_NAME_TO_ID[trimmed.toLowerCase()];
+      return (id !== undefined) ? id : 0;
+    }
+
+    function populateMovesDatalist(gen) {
+      const dl = document.getElementById("moves_list");
+      if (!dl) return;
+      dl.innerHTML = "";
+      ALL_MOVES.forEach(m => {
+        if (gen === 1 && m.gen !== 1) return;
+        const opt = document.createElement("option");
+        opt.value = m.name;
+        dl.appendChild(opt);
+      });
+    }
+
+    const GEN2_ITEMS = [{"name": "No Item", "id": 0}, {"name": "Amulet Coin", "id": 91}, {"name": "Antidote", "id": 9}, {"name": "Awakening", "id": 12}, {"name": "Basement Key", "id": 133}, {"name": "Berry", "id": 173}, {"name": "Berry Juice", "id": 139}, {"name": "Berserk Gene", "id": 152}, {"name": "Bicycle", "id": 7}, {"name": "Big Mushroom", "id": 87}, {"name": "Big Pearl", "id": 111}, {"name": "Bitter Berry", "id": 83}, {"name": "Blackbelt", "id": 98}, {"name": "Black Glasses", "id": 102}, {"name": "Blk Apricorn", "id": 99}, {"name": "Blu Apricorn", "id": 89}, {"name": "Blue Card (C Only)", "id": 116}, {"name": "Bluesky Mail", "id": 187}, {"name": "Brick Piece", "id": 180}, {"name": "Bright Powder", "id": 3}, {"name": "Burn Heal", "id": 10}, {"name": "Burnt Berry", "id": 79}, {"name": "Calcium", "id": 31}, {"name": "Carbos", "id": 29}, {"name": "Card Key", "id": 127}, {"name": "Charcoal", "id": 138}, {"name": "Cleanse Tag", "id": 94}, {"name": "Clear Bell (C Only)", "id": 70}, {"name": "Coin Case", "id": 54}, {"name": "Dire Hit", "id": 44}, {"name": "Dragon Fang", "id": 144}, {"name": "Dragon Scale", "id": 151}, {"name": "Egg Ticket (C Only)", "id": 129}, {"name": "Elixir", "id": 65}, {"name": "Energy Powder", "id": 121}, {"name": "Energy Root", "id": 122}, {"name": "Eon Mail", "id": 185}, {"name": "Escape Rope", "id": 19}, {"name": "Ether", "id": 63}, {"name": "Everstone", "id": 112}, {"name": "Exp. Share", "id": 57}, {"name": "Fast Ball", "id": 161}, {"name": "Fire Stone", "id": 22}, {"name": "Flower Mail", "id": 158}, {"name": "Focus Band", "id": 119}, {"name": "Fresh Water", "id": 46}, {"name": "Friend Ball", "id": 164}, {"name": "Full Heal", "id": 38}, {"name": "Full Restore", "id": 14}, {"name": "Gold Berry", "id": 174}, {"name": "Gold Leaf", "id": 75}, {"name": "Good Rod", "id": 59}, {"name": "Gorgeous Box", "id": 168}, {"name": "Great Ball", "id": 4}, {"name": "Grn Apricorn", "id": 93}, {"name": "GS Ball (C Only)", "id": 115}, {"name": "Guard Spec.", "id": 41}, {"name": "Hard Stone", "id": 125}, {"name": "Heal Powder", "id": 123}, {"name": "Heavy Ball", "id": 157}, {"name": "HM01", "id": 243}, {"name": "HM02", "id": 244}, {"name": "HM03", "id": 245}, {"name": "HM04", "id": 246}, {"name": "HM05", "id": 247}, {"name": "HM06", "id": 248}, {"name": "HM07", "id": 249}, {"name": "HP Up", "id": 26}, {"name": "Hyper Potion", "id": 16}, {"name": "Ice Berry", "id": 80}, {"name": "Ice Heal", "id": 11}, {"name": "Iron", "id": 28}, {"name": "Itemfinder", "id": 55}, {"name": "King's Rock", "id": 82}, {"name": "Leaf Stone", "id": 34}, {"name": "Leftovers", "id": 146}, {"name": "Lemonade", "id": 48}, {"name": "Level Ball", "id": 159}, {"name": "Light Ball", "id": 163}, {"name": "Litebluemail", "id": 182}, {"name": "Lost Item", "id": 130}, {"name": "Love Ball", "id": 166}, {"name": "Lovely Mail", "id": 184}, {"name": "Lucky Egg", "id": 126}, {"name": "Lucky Punch", "id": 30}, {"name": "Lure Ball", "id": 160}, {"name": "Machine Part", "id": 128}, {"name": "Magnet", "id": 108}, {"name": "Master Ball", "id": 1}, {"name": "Max Elixir", "id": 21}, {"name": "Max Ether", "id": 64}, {"name": "Max Potion", "id": 15}, {"name": "Max Repel", "id": 43}, {"name": "Max Revive", "id": 40}, {"name": "Metal Coat", "id": 143}, {"name": "Metal Powder", "id": 35}, {"name": "Mint Berry", "id": 84}, {"name": "MiracleBerry", "id": 109}, {"name": "Miracle Seed", "id": 117}, {"name": "Mirage Mail", "id": 189}, {"name": "Moomoo Milk", "id": 72}, {"name": "Moon Ball", "id": 165}, {"name": "Moon Stone", "id": 8}, {"name": "Morph Mail", "id": 186}, {"name": "Music Mail", "id": 188}, {"name": "Mystery Berry", "id": 150}, {"name": "Mystery Egg", "id": 69}, {"name": "Mystic Water", "id": 95}, {"name": "Never-Melt Ice", "id": 107}, {"name": "Normal Box", "id": 167}, {"name": "Nugget", "id": 36}, {"name": "Old Rod", "id": 58}, {"name": "Paralyze Heal", "id": 13}, {"name": "Park Ball", "id": 177}, {"name": "Pass", "id": 134}, {"name": "Pearl", "id": 110}, {"name": "Pink Bow", "id": 104}, {"name": "Pnk Apricorn", "id": 101}, {"name": "Poison Barb", "id": 81}, {"name": "Poke Ball", "id": 5}, {"name": "Poke Doll", "id": 37}, {"name": "Polkadot Bow", "id": 170}, {"name": "Portraitmail", "id": 183}, {"name": "Potion", "id": 18}, {"name": "PP Up", "id": 62}, {"name": "Protein", "id": 27}, {"name": "PRZCureBerry", "id": 78}, {"name": "PSNCureBerry", "id": 74}, {"name": "Quick Claw", "id": 73}, {"name": "Rage Candy Bar", "id": 114}, {"name": "Rainbow Wing", "id": 178}, {"name": "Rare Candy", "id": 32}, {"name": "Red Apricorn", "id": 85}, {"name": "Red Scale", "id": 66}, {"name": "Repel", "id": 20}, {"name": "Revival Herb", "id": 124}, {"name": "Revive", "id": 39}, {"name": "Sacred Ash", "id": 156}, {"name": "Scope Lens", "id": 140}, {"name": "Secret Potion", "id": 67}, {"name": "Sharp Beak", "id": 77}, {"name": "Silver Leaf", "id": 60}, {"name": "Silver Powder", "id": 88}, {"name": "Silver Wing", "id": 71}, {"name": "Slowpoke Tail", "id": 103}, {"name": "Smoke Ball", "id": 106}, {"name": "Soda Pop", "id": 47}, {"name": "Soft Sand", "id": 76}, {"name": "Spell Tag", "id": 113}, {"name": "Squirt Bottle", "id": 175}, {"name": "S.S. Ticket", "id": 68}, {"name": "Stardust", "id": 131}, {"name": "Star Piece", "id": 132}, {"name": "Stick", "id": 105}, {"name": "Sun Stone", "id": 169}, {"name": "Super Potion", "id": 17}, {"name": "Super Repel", "id": 42}, {"name": "Super Rod", "id": 61}, {"name": "Surf Mail", "id": 181}, {"name": "Teru-sama", "id": 90}, {"name": "Teru-sama", "id": 120}, {"name": "Thick Club", "id": 118}, {"name": "Thunder Stone", "id": 23}, {"name": "Tiny Mushroom", "id": 86}, {"name": "TM01", "id": 191}, {"name": "TM02", "id": 192}, {"name": "TM03", "id": 193}, {"name": "TM04", "id": 194}, {"name": "TM05", "id": 196}, {"name": "TM06", "id": 197}, {"name": "TM07", "id": 198}, {"name": "TM08", "id": 199}, {"name": "TM09", "id": 200}, {"name": "TM10", "id": 201}, {"name": "TM11", "id": 202}, {"name": "TM12", "id": 203}, {"name": "TM13", "id": 204}, {"name": "TM14", "id": 205}, {"name": "TM15", "id": 206}, {"name": "TM16", "id": 207}, {"name": "TM17", "id": 208}, {"name": "TM18", "id": 209}, {"name": "TM19", "id": 210}, {"name": "TM20", "id": 211}, {"name": "TM21", "id": 212}, {"name": "TM22", "id": 213}, {"name": "TM23", "id": 214}, {"name": "TM24", "id": 215}, {"name": "TM25", "id": 216}, {"name": "TM26", "id": 217}, {"name": "TM27", "id": 218}, {"name": "TM28", "id": 219}, {"name": "TM29", "id": 221}, {"name": "TM30", "id": 222}, {"name": "TM31", "id": 223}, {"name": "TM32", "id": 224}, {"name": "TM33", "id": 225}, {"name": "TM34", "id": 226}, {"name": "TM35", "id": 227}, {"name": "TM36", "id": 228}, {"name": "TM37", "id": 229}, {"name": "TM38", "id": 230}, {"name": "TM39", "id": 231}, {"name": "TM40", "id": 232}, {"name": "TM41", "id": 233}, {"name": "TM42", "id": 234}, {"name": "TM43", "id": 235}, {"name": "TM44", "id": 236}, {"name": "TM45", "id": 237}, {"name": "TM46", "id": 238}, {"name": "TM47", "id": 239}, {"name": "TM48", "id": 240}, {"name": "TM49", "id": 241}, {"name": "TM50", "id": 242}, {"name": "Twisted Spoon", "id": 96}, {"name": "Ultra Ball", "id": 2}, {"name": "Up-Grade", "id": 172}, {"name": "Water Stone", "id": 24}, {"name": "Wht Apricorn", "id": 97}, {"name": "X Accuracy", "id": 33}, {"name": "X Attack", "id": 49}, {"name": "X Defend", "id": 51}, {"name": "X Special", "id": 53}, {"name": "X Speed", "id": 52}, {"name": "Ylw Apricorn", "id": 92}];
+
+    function populateSpeciesSelect() {
+      const sel = document.getElementById("species");
+      if (!sel) return;
+      const prevVal = parseInt(sel.value) || 94;
+      const maxSp = currentGen === 1 ? 151 : 251;
+      sel.innerHTML = "";
+      for (let i = 1; i <= maxSp; i++) {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = "#" + String(i).padStart(3, "0") + " - " + POKEMON_NAMES[i - 1];
+        if (i === prevVal) opt.selected = true;
+        sel.appendChild(opt);
+      }
+      if (prevVal > maxSp) {
+        sel.value = 1;
+        onSpeciesChange();
+      }
+    }
+
+    function populateItemsSelect() {
+      const sel = document.getElementById("item");
+      if (!sel) return;
+      sel.innerHTML = "";
+      GEN2_ITEMS.forEach(it => {
+        const opt = document.createElement("option");
+        opt.value = it.id;
+        opt.textContent = it.name;
+        sel.appendChild(opt);
+      });
+    }
+
+    function onSpeciesChange() {
+      const sp = parseInt(document.getElementById("species").value) || 1;
+      const name = POKEMON_NAMES[sp - 1] || "POKEMON";
+      document.getElementById("nickname").value = name.toUpperCase().slice(0, 10);
+      updatePreview();
+    }
+
     let ws;
 
     function showToast(msg) {
@@ -661,10 +750,10 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
         document.getElementById('rec_species').value = data.name + ' (ID ' + data.species + ')';
         document.getElementById('rec_level').value = data.level;
         document.getElementById('rec_nick').value = data.nickname;
-        document.getElementById('rec_m0').value = data.moves[0];
-        document.getElementById('rec_m1').value = data.moves[1];
-        document.getElementById('rec_m2').value = data.moves[2];
-        document.getElementById('rec_m3').value = data.moves[3];
+        document.getElementById('rec_m0').value = moveIdToName(data.moves[0]);
+        document.getElementById('rec_m1').value = moveIdToName(data.moves[1]);
+        document.getElementById('rec_m2').value = moveIdToName(data.moves[2]);
+        document.getElementById('rec_m3').value = moveIdToName(data.moves[3]);
         log(`Recibido de Game Boy: ${data.name} (Lvl ${data.level})`);
         showToast(`¡${data.name} recibido de Game Boy!`);
       }
@@ -705,6 +794,22 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
       currentGen = parseInt(document.getElementById('genSelect').value);
       document.getElementById('genBadge').textContent = currentGen === 1 ? 'GEN I' : 'GEN II';
       document.getElementById('gen2Options').style.display = currentGen === 2 ? 'block' : 'none';
+      if (currentGen === 1) {
+        document.getElementById('shiny').checked = false;
+        document.getElementById('item').value = 0;
+        ['m0', 'm1', 'm2', 'm3'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            const mId = moveToId(el.value);
+            const mObj = ALL_MOVES.find(m => m.id === mId);
+            if (mObj && mObj.gen === 2) {
+              el.value = "No Move";
+            }
+          }
+        });
+      }
+      populateSpeciesSelect();
+      populateMovesDatalist(currentGen);
       fetch('/api/generation', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -720,74 +825,74 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
         document.getElementById('species').value = 94;
         document.getElementById('nickname').value = 'GENGAR';
         document.getElementById('level').value = 50;
-        document.getElementById('m0').value = 138;
-        document.getElementById('m1').value = 85;
-        document.getElementById('m2').value = 94;
-        document.getElementById('m3').value = 69;
+        document.getElementById('m0').value = moveIdToName(138);
+        document.getElementById('m1').value = moveIdToName(85);
+        document.getElementById('m2').value = moveIdToName(94);
+        document.getElementById('m3').value = moveIdToName(69);
       } else if (preset === 'machamp') {
         document.getElementById('species').value = 68;
         document.getElementById('nickname').value = 'MACHAMP';
         document.getElementById('level').value = 50;
-        document.getElementById('m0').value = 22;
-        document.getElementById('m1').value = 70;
-        document.getElementById('m2').value = 90;
-        document.getElementById('m3').value = 25;
+        document.getElementById('m0').value = moveIdToName(22);
+        document.getElementById('m1').value = moveIdToName(70);
+        document.getElementById('m2').value = moveIdToName(90);
+        document.getElementById('m3').value = moveIdToName(25);
       } else if (preset === 'alakazam') {
         document.getElementById('species').value = 65;
         document.getElementById('nickname').value = 'ALAKAZAM';
         document.getElementById('level').value = 50;
-        document.getElementById('m0').value = 94;
-        document.getElementById('m1').value = 105;
-        document.getElementById('m2').value = 115;
-        document.getElementById('m3').value = 129;
+        document.getElementById('m0').value = moveIdToName(94);
+        document.getElementById('m1').value = moveIdToName(105);
+        document.getElementById('m2').value = moveIdToName(115);
+        document.getElementById('m3').value = moveIdToName(129);
       } else if (preset === 'golem') {
         document.getElementById('species').value = 76;
         document.getElementById('nickname').value = 'GOLEM';
         document.getElementById('level').value = 50;
-        document.getElementById('m0').value = 89;
-        document.getElementById('m1').value = 88;
-        document.getElementById('m2').value = 153;
-        document.getElementById('m3').value = 23;
+        document.getElementById('m0').value = moveIdToName(89);
+        document.getElementById('m1').value = moveIdToName(88);
+        document.getElementById('m2').value = moveIdToName(153);
+        document.getElementById('m3').value = moveIdToName(23);
       } else if (preset === 'steelix') {
         document.getElementById('genSelect').value = 2;
         changeGeneration();
         document.getElementById('species').value = 208;
         document.getElementById('nickname').value = 'STEELIX';
         document.getElementById('level').value = 50;
-        document.getElementById('m0').value = 231;
-        document.getElementById('m1').value = 89;
-        document.getElementById('m2').value = 157;
-        document.getElementById('m3').value = 23;
+        document.getElementById('m0').value = moveIdToName(231);
+        document.getElementById('m1').value = moveIdToName(89);
+        document.getElementById('m2').value = moveIdToName(157);
+        document.getElementById('m3').value = moveIdToName(23);
       } else if (preset === 'scizor') {
         document.getElementById('genSelect').value = 2;
         changeGeneration();
         document.getElementById('species').value = 212;
         document.getElementById('nickname').value = 'SCIZOR';
         document.getElementById('level').value = 50;
-        document.getElementById('m0').value = 232;
-        document.getElementById('m1').value = 14;
-        document.getElementById('m2').value = 97;
-        document.getElementById('m3').value = 210;
+        document.getElementById('m0').value = moveIdToName(232);
+        document.getElementById('m1').value = moveIdToName(14);
+        document.getElementById('m2').value = moveIdToName(97);
+        document.getElementById('m3').value = moveIdToName(210);
       } else if (preset === 'kingdra') {
         document.getElementById('genSelect').value = 2;
         changeGeneration();
         document.getElementById('species').value = 230;
         document.getElementById('nickname').value = 'KINGDRA';
         document.getElementById('level').value = 50;
-        document.getElementById('m0').value = 56;
-        document.getElementById('m1').value = 225;
-        document.getElementById('m2').value = 82;
-        document.getElementById('m3').value = 61;
+        document.getElementById('m0').value = moveIdToName(56);
+        document.getElementById('m1').value = moveIdToName(225);
+        document.getElementById('m2').value = moveIdToName(82);
+        document.getElementById('m3').value = moveIdToName(61);
       } else if (preset === 'mew') {
         document.getElementById('species').value = 151;
         document.getElementById('nickname').value = 'MEW';
         document.getElementById('ot_name').value = 'MYSTRY';
         document.getElementById('ot_id').value = 69;
         document.getElementById('level').value = 30;
-        document.getElementById('m0').value = 1;
-        document.getElementById('m1').value = 104;
-        document.getElementById('m2').value = 129;
-        document.getElementById('m3').value = 94;
+        document.getElementById('m0').value = moveIdToName(1);
+        document.getElementById('m1').value = moveIdToName(104);
+        document.getElementById('m2').value = moveIdToName(129);
+        document.getElementById('m3').value = moveIdToName(94);
       } else if (preset === 'celebi') {
         document.getElementById('genSelect').value = 2;
         changeGeneration();
@@ -796,10 +901,10 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
         document.getElementById('ot_name').value = 'WIN2011';
         document.getElementById('ot_id').value = 1121;
         document.getElementById('level').value = 50;
-        document.getElementById('m0').value = 73;
-        document.getElementById('m1').value = 105;
-        document.getElementById('m2').value = 113;
-        document.getElementById('m3').value = 247;
+        document.getElementById('m0').value = moveIdToName(73);
+        document.getElementById('m1').value = moveIdToName(105);
+        document.getElementById('m2').value = moveIdToName(113);
+        document.getElementById('m3').value = moveIdToName(247);
       }
       updatePreview();
       log(`Preset aplicado: ${preset}`);
@@ -814,10 +919,10 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
         nickname: document.getElementById('nickname').value,
         ot_name: document.getElementById('ot_name').value,
         ot_id: parseInt(document.getElementById('ot_id').value),
-        m0: parseInt(document.getElementById('m0').value),
-        m1: parseInt(document.getElementById('m1').value),
-        m2: parseInt(document.getElementById('m2').value),
-        m3: parseInt(document.getElementById('m3').value),
+        m0: moveToId(document.getElementById('m0').value),
+        m1: moveToId(document.getElementById('m1').value),
+        m2: moveToId(document.getElementById('m2').value),
+        m3: moveToId(document.getElementById('m3').value),
         eviv: parseInt(document.getElementById('eviv').value),
         shiny: document.getElementById('shiny').checked,
         item: parseInt(document.getElementById('item').value) || 0
@@ -837,10 +942,10 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
       const payload = {
         level: parseInt(document.getElementById('rec_level').value),
         nickname: document.getElementById('rec_nick').value,
-        m0: parseInt(document.getElementById('rec_m0').value),
-        m1: parseInt(document.getElementById('rec_m1').value),
-        m2: parseInt(document.getElementById('rec_m2').value),
-        m3: parseInt(document.getElementById('rec_m3').value),
+        m0: moveToId(document.getElementById('rec_m0').value),
+        m1: moveToId(document.getElementById('rec_m1').value),
+        m2: moveToId(document.getElementById('rec_m2').value),
+        m3: moveToId(document.getElementById('rec_m3').value),
         shiny: document.getElementById('rec_shiny').checked,
         item: 0
       };
@@ -856,6 +961,9 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
     }
 
     window.onload = () => {
+      populateSpeciesSelect();
+      populateItemsSelect();
+      populateMovesDatalist(currentGen);
       initWS();
       updatePreview();
     };
