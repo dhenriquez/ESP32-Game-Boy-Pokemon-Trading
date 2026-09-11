@@ -9,6 +9,7 @@
 void networkTask(void* parameter) {
     for (;;) {
         Portal.process();
+        TradeEngine.process();
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
@@ -44,6 +45,13 @@ void setup() {
 
     // Initialize Trade Engine and Link Driver
     TradeEngine.setEventCallback(onTradeEngineEvent);
+    TradeEngine.setGenerationCallback([](uint8_t gen) {
+        Serial.printf("[TradeEngine] Generation changed/detected: Gen %d\n", (int)gen);
+        WebManager.broadcastGeneration(gen);
+    });
+    TradeEngine.setReceivedCallback([](PokemonData* pdata) {
+        WebManager.broadcastReceivedPokemon(pdata);
+    });
     TradeEngine.begin(GEN_I, PIN_GB_CLK, PIN_GB_SO, PIN_GB_SI);
     Serial.printf("[GB Link] Initialized on CLK:%d, SO:%d, SI:%d\n", PIN_GB_CLK, PIN_GB_SO, PIN_GB_SI);
 
@@ -71,6 +79,8 @@ void setup() {
 }
 
 void loop() {
+    TradeEngine.process();
+
     // LED heartbeat / connection status blink
     static uint32_t last_blink = 0;
     if (millis() - last_blink > 500) {
@@ -82,5 +92,5 @@ void loop() {
         }
     }
 
-    delay(100);
+    delay(20);
 }

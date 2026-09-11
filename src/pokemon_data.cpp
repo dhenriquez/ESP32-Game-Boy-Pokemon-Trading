@@ -611,10 +611,17 @@ void pokemon_set_shiny(PokemonData* pdata, bool shiny) {
         pokemon_stat_set(pdata, STAT_SPD_IV, NONE, 10);
         pokemon_stat_set(pdata, STAT_SPC_IV, NONE, 10);
         pokemon_stat_set(pdata, STAT_ATK_IV, NONE, 10);
-    } else {
-        pokemon_stat_set(pdata, STAT_IV, NONE, 0xFFFF);
-    }
-    for (int i = STAT; i < STAT_END; i++) {
-        pokemon_stat_calc(pdata, (DataStat)i);
+        for (int i = STAT; i < STAT_END; i++) {
+            pokemon_stat_calc(pdata, (DataStat)i);
+        }
+    } else if (pokemon_is_shiny(pdata)) {
+        // If it was shiny, restore IVs according to selected preset
+        pokemon_stat_iv_calc(pdata, pdata->stat_sel);
+        if (pokemon_is_shiny(pdata)) {
+            pokemon_stat_set(pdata, STAT_DEF_IV, NONE, 15);
+        }
+        for (int i = STAT; i < STAT_END; i++) {
+            pokemon_stat_calc(pdata, (DataStat)i);
+        }
     }
 }

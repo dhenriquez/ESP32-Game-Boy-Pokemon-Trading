@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <esp_attr.h>
 #include "patch_list.h"
 
 PatchList* plist_alloc(void) {
@@ -27,7 +28,7 @@ void plist_free(PatchList* plist) {
     }
 }
 
-uint8_t plist_index_get(PatchList* plist, int offset) {
+uint8_t IRAM_ATTR plist_index_get(PatchList* plist, int offset) {
     if (!plist || offset < 0) return 0;
     PatchList* curr = plist;
     for (int i = 0; i < offset; i++) {

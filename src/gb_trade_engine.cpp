@@ -1,3 +1,4 @@
+#include <esp_attr.h>
 #include "gb_trade_engine.h"
 
 #define PKMN_BLANK 0x00
@@ -43,7 +44,7 @@ struct ImportantBytes {
     uint8_t sel_num_one;
 };
 
-static const ImportantBytes GEN_I_BYTES = {
+static const DRAM_ATTR ImportantBytes GEN_I_BYTES = {
     PKMN_CONNECTED,
     PKMN_TRADE_ACCEPT_GEN_I,
     PKMN_TRADE_REJECT_GEN_I,
@@ -52,7 +53,7 @@ static const ImportantBytes GEN_I_BYTES = {
     PKMN_SEL_NUM_ONE_GEN_I,
 };
 
-static const ImportantBytes GEN_II_BYTES = {
+static const DRAM_ATTR ImportantBytes GEN_II_BYTES = {
     PKMN_CONNECTED_II,
     PKMN_TRADE_ACCEPT_GEN_II,
     PKMN_TRADE_REJECT_GEN_II,
@@ -63,7 +64,7 @@ static const ImportantBytes GEN_II_BYTES = {
 
 GBTradeEngine TradeEngine;
 
-static uint8_t driver_callback_shim(void* context, uint8_t in_byte) {
+static uint8_t IRAM_ATTR driver_callback_shim(void* context, uint8_t in_byte) {
     GBTradeEngine* engine = (GBTradeEngine*)context;
     if (!engine) return PKMN_BLANK;
     return engine->onByteExchange(in_byte);
@@ -77,6 +78,14 @@ GBTradeEngine::GBTradeEngine()
     , _trade_state(STATE_NOT_CONNECTED)
     , _visual_status(STATUS_WAITING_GB)
     , _event_cb(NULL)
+    , _gen_cb(NULL)
+    , _received_cb(NULL)
+    , _status_pending(false)
+    , _pending_status(STATUS_WAITING_GB)
+    , _pending_msg(NULL)
+    , _pending_gen_switch(0)
+    , _received_pending(false)
+    , _rebuild_patch_pending(false)
     , _counter(0)
     , _patch_pt_2(false)
     , _incoming_selected_index(0)
@@ -104,7 +113,7 @@ void GBTradeEngine::begin(uint8_t gen, uint8_t clk_pin, uint8_t so_pin, uint8_t 
     updateStatus(STATUS_WAITING_GB, "En espera de conexión Game Boy...");
 }
 
-void GBTradeEngine::setGeneration(uint8_t gen) {
+void GBTradeEngine::setGeneration(uint8_t gen, bool reset_link) {
     if (_gen == gen) return;
     _gen = gen;
     if (_pdata) pokemon_data_free(_pdata);
@@ -114,8 +123,14 @@ void GBTradeEngine::setGeneration(uint8_t gen) {
     _received_pdata = pokemon_data_alloc(_gen);
     rebuildPatchList();
 
-    _trade_state = STATE_NOT_CONNECTED;
-    updateStatus(STATUS_WAITING_GB, "Generación cambiada. Reiniciando enlace...");
+    if (reset_link) {
+        _trade_state = STATE_NOT_CONNECTED;
+        updateStatus(STATUS_WAITING_GB, "Generación cambiada. Reiniciando enlace...");
+    }
+
+    if (_gen_cb) {
+        _gen_cb(_gen);
+    }
 }
 
 void GBTradeEngine::rebuildPatchList() {
@@ -216,15 +231,44 @@ const char* GBTradeEngine::getVisualStatusString() const {
     }
 }
 
-void GBTradeEngine::updateStatus(GBVisualStatus new_status, const char* msg) {
-    _visual_status = new_status;
-    _last_status_change_ms = millis();
-    if (_event_cb) {
-        _event_cb(new_status, msg);
+void GBTradeEngine::process() {
+    if (_pending_gen_switch != 0) {
+        uint8_t target_gen = _pending_gen_switch;
+        _pending_gen_switch = 0;
+        setGeneration(target_gen, false);
+    }
+
+    if (_rebuild_patch_pending) {
+        _rebuild_patch_pending = false;
+        rebuildPatchList();
+    }
+
+    if (_status_pending) {
+        _status_pending = false;
+        GBVisualStatus st = (GBVisualStatus)_pending_status;
+        const char* msg = (const char*)_pending_msg;
+        _last_status_change_ms = millis();
+        if (_event_cb) {
+            _event_cb(st, msg);
+        }
+    }
+
+    if (_received_pending) {
+        _received_pending = false;
+        if (_received_cb) {
+            _received_cb(_received_pdata);
+        }
     }
 }
 
-uint8_t GBTradeEngine::onByteExchange(uint8_t in_byte) {
+void IRAM_ATTR GBTradeEngine::updateStatus(GBVisualStatus new_status, const char* msg) {
+    _visual_status = new_status;
+    _pending_status = new_status;
+    _pending_msg = msg;
+    _status_pending = true;
+}
+
+uint8_t IRAM_ATTR GBTradeEngine::onByteExchange(uint8_t in_byte) {
     switch (_trade_state) {
     case STATE_NOT_CONNECTED:
         return handleConnectPhase(in_byte);
@@ -235,7 +279,7 @@ uint8_t GBTradeEngine::onByteExchange(uint8_t in_byte) {
     }
 }
 
-uint8_t GBTradeEngine::handleConnectPhase(uint8_t in_byte) {
+uint8_t IRAM_ATTR GBTradeEngine::handleConnectPhase(uint8_t in_byte) {
     uint8_t response = PKMN_BLANK;
     switch (in_byte) {
     case PKMN_MASTER:
@@ -245,10 +289,20 @@ uint8_t GBTradeEngine::handleConnectPhase(uint8_t in_byte) {
         response = PKMN_BLANK;
         break;
     case PKMN_CONNECTED:
+        response = in_byte;
+        _trade_state = STATE_CONNECTED;
+        if (_gen != GEN_I) {
+            _pending_gen_switch = GEN_I;
+        }
+        updateStatus(STATUS_LINK_CONNECTED, "Conexión Game Boy detectada (Gen I).");
+        break;
     case PKMN_CONNECTED_II:
         response = in_byte;
         _trade_state = STATE_CONNECTED;
-        updateStatus(STATUS_LINK_CONNECTED, "Conexión Game Boy detectada.");
+        if (_gen != GEN_II) {
+            _pending_gen_switch = GEN_II;
+        }
+        updateStatus(STATUS_LINK_CONNECTED, "Conexión Game Boy detectada (Gen II).");
         break;
     default:
         response = PKMN_BLANK;
@@ -257,7 +311,7 @@ uint8_t GBTradeEngine::handleConnectPhase(uint8_t in_byte) {
     return response;
 }
 
-uint8_t GBTradeEngine::handleMenuPhase(uint8_t in_byte) {
+uint8_t IRAM_ATTR GBTradeEngine::handleMenuPhase(uint8_t in_byte) {
     uint8_t response = PKMN_BLANK;
     switch (in_byte) {
     case PKMN_CONNECTED:
@@ -289,7 +343,7 @@ uint8_t GBTradeEngine::handleMenuPhase(uint8_t in_byte) {
     return response;
 }
 
-uint8_t GBTradeEngine::handleTradeCentrePhase(uint8_t in_byte) {
+uint8_t IRAM_ATTR GBTradeEngine::handleTradeCentrePhase(uint8_t in_byte) {
     uint8_t* trade_block_flat = (uint8_t*)_pdata->trade_block;
     uint8_t* input_block_flat = (uint8_t*)_received_pdata->trade_block;
     uint8_t* input_party_flat = (uint8_t*)_received_pdata->party;
@@ -426,11 +480,16 @@ uint8_t GBTradeEngine::handleTradeCentrePhase(uint8_t in_byte) {
             _trade_state = STATE_TRADE_INIT;
             _counter = 0;
 
-            // Copy traded pokemon into our received struct
-            pokemon_stat_memcpy(_received_pdata, _pdata, 0); // Keep copy
-            pokemon_stat_memcpy(_pdata, _received_pdata, _incoming_selected_index); // Adopt incoming
+            // 1. Move incoming pokemon from selected party slot to slot 0 of _received_pdata
+            if (_incoming_selected_index != 0) {
+                pokemon_stat_memcpy(_received_pdata, _received_pdata, _incoming_selected_index);
+            }
 
-            rebuildPatchList();
+            // 2. Adopt incoming pokemon into _pdata slot 0 with its exact moves and stats
+            pokemon_stat_memcpy(_pdata, _received_pdata, 0);
+
+            _rebuild_patch_pending = true;
+            _received_pending = true;
             updateStatus(STATUS_TRADE_SUCCESS, "¡Intercambio completado exitosamente!");
         }
         break;

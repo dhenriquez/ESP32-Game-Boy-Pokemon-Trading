@@ -3,9 +3,7 @@
 ## Purpose
 
 Provides an autonomous Wi-Fi SoftAP and Captive Portal web interface for customizing, managing, inspecting, and monitoring Pokémon trades on mobile devices and browsers.
-
 ## Requirements
-
 ### Requirement: Wi-Fi SoftAP and Captive Portal Redirection
 The system SHALL broadcast a wireless Access Point and run an embedded DNS server that intercepts all domain requests and redirects clients to the local trading web application.
 
@@ -61,3 +59,8 @@ The system SHALL establish a WebSocket connection between the web client and the
 #### Scenario: Live connection status transition
 - **WHEN** the Game Boy changes link state (connected, trade room, trading, completed, disconnected)
 - **THEN** the web interface updates the visual status indicators and logs the event in real time without requiring a page reload
+
+#### Scenario: Live generation auto-synchronization
+- **WHEN** the ESP32 broadcasts a `generation` event detected from the Game Boy Link connection
+- **THEN** the web application updates its internal generation state, updates the generation selector and badge, and dynamically adjusts available species, items, and moves without dropping the connection
+

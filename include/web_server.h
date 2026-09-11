@@ -12,6 +12,7 @@ public:
     void begin();
     void broadcastStatus(GBVisualStatus status, const char* msg);
     void broadcastReceivedPokemon(PokemonData* pdata);
+    void broadcastGeneration(uint8_t gen);
 
 private:
     AsyncWebServer _server;

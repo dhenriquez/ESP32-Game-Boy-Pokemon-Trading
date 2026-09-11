@@ -1,5 +1,8 @@
 .pio/build/esp32-s3-supermini/src/gb_trade_engine.cpp.o: \
- src/gb_trade_engine.cpp include/gb_trade_engine.h \
+ src/gb_trade_engine.cpp \
+ /Users/danielhenriquezsandoval/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_common/include/esp_attr.h \
+ /Users/danielhenriquezsandoval/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/dio_qspi/include/sdkconfig.h \
+ include/gb_trade_engine.h \
  /Users/danielhenriquezsandoval/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
  /Users/danielhenriquezsandoval/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp_arduino_version.h \
  /Users/danielhenriquezsandoval/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/freertos/include/freertos/FreeRTOS.h \
@@ -49,7 +52,6 @@
  /Users/danielhenriquezsandoval/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/hal/include/hal/cpu_types.h \
  /Users/danielhenriquezsandoval/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/hal/esp32s3/include/hal/cpu_ll.h \
  /Users/danielhenriquezsandoval/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/xtensa/esp32s3/include/xtensa/config/extreg.h \
- /Users/danielhenriquezsandoval/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_common/include/esp_attr.h \
  /Users/danielhenriquezsandoval/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_hw_support/include/soc/compare_set.h \
  /Users/danielhenriquezsandoval/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/include/soc/soc_memory_types.h \
  /Users/danielhenriquezsandoval/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_system/include/esp_private/crosscore_int.h \

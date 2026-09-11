@@ -29,7 +29,7 @@ uint8_t
     case STAT_BASE_INDEX:
         return table[num].index;
     case STAT_BASE_ATK:
-        return table[num].base_hp;
+        return table[num].base_atk;
     case STAT_BASE_DEF:
         return table[num].base_def;
     case STAT_BASE_SPD:

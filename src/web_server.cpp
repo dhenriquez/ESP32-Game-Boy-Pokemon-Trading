@@ -26,6 +26,7 @@ void WebServerManager::setupWebSocket() {
             doc["title"] = TradeEngine.getVisualStatusString();
             doc["desc"] = TradeEngine.getVisualStatusString();
             doc["connected"] = (TradeEngine.getVisualStatus() > STATUS_WAITING_GB);
+            doc["gen"] = (int)TradeEngine.getGeneration();
 
             String output;
             serializeJson(doc, output);
@@ -182,6 +183,8 @@ void WebServerManager::broadcastReceivedPokemon(PokemonData* pdata) {
     doc["species"] = species + 1;
     doc["name"] = table_stat_name_get(pdata->pokemon_table, species);
     doc["level"] = pokemon_stat_get(pdata, STAT_LEVEL, NONE);
+    doc["shiny"] = pokemon_is_shiny(pdata);
+    doc["item"] = (pdata->gen == GEN_II) ? pokemon_stat_get(pdata, STAT_HELD_ITEM, NONE) : 0;
 
     char nick[LEN_NICKNAME];
     pokemon_name_get(pdata, STAT_NICKNAME, nick, sizeof(nick));
@@ -197,3 +200,16 @@ void WebServerManager::broadcastReceivedPokemon(PokemonData* pdata) {
     serializeJson(doc, output);
     _ws.textAll(output);
 }
+
+void WebServerManager::broadcastGeneration(uint8_t gen) {
+    if (_ws.count() == 0) return;
+
+    JsonDocument doc;
+    doc["type"] = "generation";
+    doc["gen"] = (int)gen;
+
+    String output;
+    serializeJson(doc, output);
+    _ws.textAll(output);
+}
+
