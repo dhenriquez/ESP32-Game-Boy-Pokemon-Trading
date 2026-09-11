@@ -368,7 +368,7 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
   <div class="container">
     <header>
       <img src="/logo.png" alt="GB-PokeTrader" class="brand-logo">
-      <div class="brand-subtitle">ESP32-S3 Game Boy Link Station - @dhenriquez</div>
+      <div class="brand-subtitle">by @dhenriquez</div>
     </header>
 
     <div class="status-card" id="statusCard">
