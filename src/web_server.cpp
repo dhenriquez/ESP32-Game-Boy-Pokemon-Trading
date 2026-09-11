@@ -103,7 +103,10 @@ void WebServerManager::setupRoutes() {
                     m0, m1, m2, m3, eviv, shiny, item
                 );
 
-                request->send(200, "application/json", "{\"success\":true}");
+                bool in_table = TradeEngine.isAtTradeTable();
+                char resp[64];
+                snprintf(resp, sizeof(resp), "{\"success\":true,\"in_table\":%s}", in_table ? "true" : "false");
+                request->send(200, "application/json", resp);
             } else {
                 request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
             }
@@ -129,7 +132,10 @@ void WebServerManager::setupRoutes() {
                     level, nickname, m0, m1, m2, m3, shiny, item
                 );
 
-                request->send(200, "application/json", "{\"success\":true}");
+                bool in_table = TradeEngine.isAtTradeTable();
+                char resp[64];
+                snprintf(resp, sizeof(resp), "{\"success\":true,\"in_table\":%s}", in_table ? "true" : "false");
+                request->send(200, "application/json", resp);
             } else {
                 request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
             }

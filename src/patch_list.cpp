@@ -56,14 +56,20 @@ void plist_create(PatchList** pplist, PokemonData* pdata) {
      * Part 2 covers offsets 0xFC - end.
      * 0xFF signifies end of part 2.
      * If party byte is 0xFE, replace with 0xFF and record (offset % 0xFC) + 1.
+     *
+     * Note: In Gen II, Game Boy's wLinkPlayerPatchedData starts at wLinkPlayerID (2 bytes
+     * before party[0]). Therefore, party offsets are shifted by 2 bytes.
      */
+    size_t prefix_offset = (pdata->gen == GEN_II) ? 2 : 0;
+
     for (size_t i = 0; i < pdata->party_sz; i++) {
-        if (i == 0xFC) {
+        size_t effective_offset = i + prefix_offset;
+        if (effective_offset == 0xFC) {
             plist_append(*pplist, 0xFF);
         }
 
         if (trade_party_flat[i] == 0xFE) {
-            plist_append(*pplist, (uint8_t)((i % 0xFC) + 1));
+            plist_append(*pplist, (uint8_t)((effective_offset % 0xFC) + 1));
             trade_party_flat[i] = 0xFF;
         }
     }

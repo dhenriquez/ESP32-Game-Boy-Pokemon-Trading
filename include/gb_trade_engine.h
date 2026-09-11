@@ -89,6 +89,11 @@ public:
 
     void rebuildPatchList();
 
+    // Returns true if Game Boy is actively seated at the Cable Club trade table
+    bool isAtTradeTable() const {
+        return _trade_state >= STATE_TRADE_SELECT && _trade_state <= STATE_TRADE_CONFIRMATION;
+    }
+
     // The core SPI byte transfer processor called by the Link Driver ISR
     uint8_t IRAM_ATTR onByteExchange(uint8_t in_byte);
 

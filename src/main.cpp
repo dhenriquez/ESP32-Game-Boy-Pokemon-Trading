@@ -14,6 +14,47 @@ void networkTask(void* parameter) {
     }
 }
 
+void setStatusLedColor(GBVisualStatus status) {
+    #if defined(PIN_STATUS_LED)
+    #if defined(BOARD_ESP32S3_SUPERMINI)
+    switch (status) {
+    case STATUS_WAITING_GB:
+        // Red - En espera de Game Boy
+        neopixelWrite(PIN_STATUS_LED, 48, 0, 0);
+        break;
+    case STATUS_LINK_CONNECTED:
+        // Amber / Yellow - Conectado
+        neopixelWrite(PIN_STATUS_LED, 48, 24, 0);
+        break;
+    case STATUS_IN_TRADE_ROOM:
+    case STATUS_SELECTING_POKEMON:
+    case STATUS_CONFIRMING_DEAL:
+        // Blue / Cyan - En sala de intercambio / mesa
+        neopixelWrite(PIN_STATUS_LED, 0, 24, 48);
+        break;
+    case STATUS_EXCHANGING_DATA:
+    case STATUS_TRADING_ANIMATION:
+        // Magenta / Purple - Transfiriendo datos / animación
+        neopixelWrite(PIN_STATUS_LED, 36, 0, 48);
+        break;
+    case STATUS_TRADE_SUCCESS:
+        // Green - Intercambio completado con éxito
+        neopixelWrite(PIN_STATUS_LED, 0, 48, 0);
+        break;
+    default:
+        neopixelWrite(PIN_STATUS_LED, 0, 0, 0);
+        break;
+    }
+    #else
+    if (status > STATUS_WAITING_GB) {
+        digitalWrite(PIN_STATUS_LED, LOW);
+    } else {
+        digitalWrite(PIN_STATUS_LED, HIGH);
+    }
+    #endif
+    #endif
+}
+
 void onTradeEngineEvent(GBVisualStatus status, const char* msg) {
     WebManager.broadcastStatus(status, msg);
 
@@ -22,13 +63,7 @@ void onTradeEngineEvent(GBVisualStatus status, const char* msg) {
         WebManager.broadcastReceivedPokemon(TradeEngine.getReceivedPokemonData());
     }
 
-    #if defined(PIN_STATUS_LED)
-    if (status > STATUS_WAITING_GB) {
-        digitalWrite(PIN_STATUS_LED, LOW); // LED ON (active low on many ESP32 boards)
-    } else {
-        digitalWrite(PIN_STATUS_LED, HIGH); // LED OFF
-    }
-    #endif
+    setStatusLedColor(status);
 }
 
 void setup() {
@@ -39,8 +74,12 @@ void setup() {
     Serial.println("==========================================");
 
     #if defined(PIN_STATUS_LED)
+    #if defined(BOARD_ESP32S3_SUPERMINI)
+    setStatusLedColor(STATUS_WAITING_GB);
+    #else
     pinMode(PIN_STATUS_LED, OUTPUT);
     digitalWrite(PIN_STATUS_LED, HIGH);
+    #endif
     #endif
 
     // Initialize Trade Engine and Link Driver

@@ -619,6 +619,10 @@
             <label>Mote</label>
             <input type="text" id="rec_nick" maxlength="10">
           </div>
+          <div class="form-group">
+            <label>Objeto Equipado (Gen II)</label>
+            <select id="rec_item"></select>
+          </div>
           <div class="grid-2">
             <div class="form-group">
               <label>Ataque 1</label>
@@ -771,14 +775,18 @@
     }
 
     function populateItemsSelect() {
-      const sel = document.getElementById("item");
-      if (!sel) return;
-      sel.innerHTML = "";
-      GEN2_ITEMS.forEach(it => {
-        const opt = document.createElement("option");
-        opt.value = it.id;
-        opt.textContent = it.name;
-        sel.appendChild(opt);
+      ['item', 'rec_item'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const prev = parseInt(sel.value) || 0;
+        sel.innerHTML = "";
+        GEN2_ITEMS.forEach(it => {
+          const opt = document.createElement("option");
+          opt.value = it.id;
+          opt.textContent = it.name;
+          if (it.id === prev) opt.selected = true;
+          sel.appendChild(opt);
+        });
       });
     }
 
@@ -995,8 +1003,11 @@
 
     function returnModifiedPokemon() {
       const nick = document.getElementById('rec_nick').value;
-      showToast(`¡${nick} preparado para devolver a Game Boy!`);
-      log(`Pokémon modificado listo para retorno: ${nick}`);
+      const recItem = document.getElementById('rec_item');
+      const itemObj = GEN2_ITEMS.find(it => it.id === parseInt(recItem ? recItem.value : 0));
+      const itemStr = (itemObj && itemObj.id > 0) ? ` (Objeto: ${itemObj.name})` : '';
+      showToast(`¡${nick}${itemStr} preparado para devolver a Game Boy!`);
+      log(`Pokémon modificado listo para retorno: ${nick}${itemStr}`);
     }
 
     // Simulation Bar triggers (For Preview Mode)
@@ -1030,10 +1041,12 @@
         document.getElementById('recSpriteImg').src = 'sprites/155.png';
         document.getElementById('recSummaryName').textContent = 'CYNDAQUIL';
         document.getElementById('recSummaryDex').textContent = '#155';
-        document.getElementById('recSummaryDetails').textContent = 'Nivel 5 • Recibido desde Game Boy';
+        document.getElementById('recSummaryDetails').textContent = 'Nivel 5 • Recibido desde Game Boy • 🎒 Berry';
         document.getElementById('rec_species').value = 'Cyndaquil (ID 155)';
         document.getElementById('rec_level').value = 5;
         document.getElementById('rec_nick').value = 'CYNDAQUIL';
+        const recItemSel = document.getElementById('rec_item');
+        if (recItemSel) recItemSel.value = 173; // Berry
         document.getElementById('rec_m0').value = 33; // Tackle
         document.getElementById('rec_m1').value = 43; // Leer
         document.getElementById('rec_m2').value = 52; // Ember

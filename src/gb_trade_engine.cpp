@@ -115,13 +115,50 @@ void GBTradeEngine::begin(uint8_t gen, uint8_t clk_pin, uint8_t so_pin, uint8_t 
 
 void GBTradeEngine::setGeneration(uint8_t gen, bool reset_link) {
     if (_gen == gen) return;
+    uint8_t prev_gen = _gen;
     _gen = gen;
-    if (_pdata) pokemon_data_free(_pdata);
+
+    uint8_t species = 0;
+    uint8_t level = 50;
+    char nickname[LEN_NICKNAME] = {0};
+    char ot_name[LEN_OT_NAME] = {0};
+    uint16_t ot_id = 42069;
+    uint8_t m0 = 0, m1 = 0, m2 = 0, m3 = 0;
+    uint8_t item = 0;
+    bool shiny = false;
+    EvIvPreset eviv = MAXIV_MAXEV;
+    bool has_custom_data = false;
+
+    if (_pdata) {
+        species = pokemon_stat_get(_pdata, STAT_NUM, NONE);
+        level = pokemon_stat_get(_pdata, STAT_LEVEL, NONE);
+        pokemon_name_get(_pdata, STAT_NICKNAME, nickname, sizeof(nickname));
+        pokemon_name_get(_pdata, STAT_OT_NAME, ot_name, sizeof(ot_name));
+        ot_id = pokemon_stat_get(_pdata, STAT_OT_ID, NONE);
+        m0 = pokemon_stat_get(_pdata, STAT_MOVE, MOVE_0);
+        m1 = pokemon_stat_get(_pdata, STAT_MOVE, MOVE_1);
+        m2 = pokemon_stat_get(_pdata, STAT_MOVE, MOVE_2);
+        m3 = pokemon_stat_get(_pdata, STAT_MOVE, MOVE_3);
+        eviv = _pdata->stat_sel;
+        if (prev_gen == GEN_II) {
+            item = pokemon_stat_get(_pdata, STAT_HELD_ITEM, NONE);
+            shiny = pokemon_is_shiny(_pdata);
+        }
+        if (species != 0 || level != 5 || m0 != 0 || strlen(nickname) > 0) {
+            has_custom_data = true;
+        }
+        pokemon_data_free(_pdata);
+    }
     if (_received_pdata) pokemon_data_free(_received_pdata);
 
     _pdata = pokemon_data_alloc(_gen);
     _received_pdata = pokemon_data_alloc(_gen);
-    rebuildPatchList();
+
+    if (has_custom_data) {
+        configureOutgoingPokemon(species, level, nickname, ot_name, ot_id, m0, m1, m2, m3, eviv, shiny, item);
+    } else {
+        rebuildPatchList();
+    }
 
     if (reset_link) {
         _trade_state = STATE_NOT_CONNECTED;

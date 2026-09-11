@@ -541,6 +541,10 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <label>Mote</label>
             <input type="text" id="rec_nick" maxlength="10">
           </div>
+          <div class="form-group">
+            <label>Objeto Equipado (Gen II)</label>
+            <select id="rec_item"></select>
+          </div>
           <div class="grid-2">
             <div class="form-group">
               <label>Ataque 1</label>
@@ -688,14 +692,18 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
     }
 
     function populateItemsSelect() {
-      const sel = document.getElementById("item");
-      if (!sel) return;
-      sel.innerHTML = "";
-      GEN2_ITEMS.forEach(it => {
-        const opt = document.createElement("option");
-        opt.value = it.id;
-        opt.textContent = it.name;
-        sel.appendChild(opt);
+      ['item', 'rec_item'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const prev = parseInt(sel.value) || 0;
+        sel.innerHTML = "";
+        GEN2_ITEMS.forEach(it => {
+          const opt = document.createElement("option");
+          opt.value = it.id;
+          opt.textContent = it.name;
+          if (it.id === prev) opt.selected = true;
+          sel.appendChild(opt);
+        });
       });
     }
 
@@ -823,11 +831,15 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
         document.getElementById('recSpriteImg').src = '/sprites/' + recSp + '.png';
         document.getElementById('recSummaryName').textContent = (data.nickname || data.name).toUpperCase();
         document.getElementById('recSummaryDex').textContent = '#' + recSp;
-        document.getElementById('recSummaryDetails').textContent = 'Nivel ' + data.level + ' • ' + data.name + (data.shiny ? ' ✨ Shiny' : '');
+        const itemObj = GEN2_ITEMS.find(it => it.id === data.item);
+        const itemStr = (itemObj && itemObj.id > 0) ? (' • 🎒 ' + itemObj.name) : '';
+        document.getElementById('recSummaryDetails').textContent = 'Nivel ' + data.level + ' • ' + data.name + (data.shiny ? ' ✨ Shiny' : '') + itemStr;
 
         document.getElementById('rec_species').value = data.name + ' (ID ' + data.species + ')';
         document.getElementById('rec_level').value = data.level;
         document.getElementById('rec_nick').value = data.nickname;
+        const recItemSel = document.getElementById('rec_item');
+        if (recItemSel) recItemSel.value = data.item || 0;
         document.getElementById('rec_m0').value = data.moves[0] || 0;
         document.getElementById('rec_m1').value = data.moves[1] || 0;
         document.getElementById('rec_m2').value = data.moves[2] || 0;
@@ -837,7 +849,7 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
         // Auto-switch to Received tab
         switchTab('tab-receive', document.querySelectorAll('.tab-btn')[1]);
 
-        log(`📥 Recibido de Game Boy: ${data.name} (Lvl ${data.level})${data.shiny ? ' ✨ Shiny' : ''}`);
+        log(`📥 Recibido de Game Boy: ${data.name} (Lvl ${data.level})${data.shiny ? ' ✨ Shiny' : ''}${itemStr}`);
         showToast(`¡${data.name} recibido de Game Boy listo para editar o devolver!`);
       }
     }
@@ -1007,13 +1019,21 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload)
-      }).then(() => {
-        showToast('¡Cargado en la mesa de trade!');
+      }).then(res => res.json()).then(data => {
+        if (data && data.in_table) {
+          showToast('⚠️ Cargado en memoria. Como tu Game Boy está en la mesa, pulsa B y vuelve a sentarte para actualizar.');
+          log('⚠️ Atención: Game Boy en la mesa de trade. Pulsa B en la consola y vuelve a interactuar con la mesa para descargar los nuevos datos.');
+        } else {
+          showToast('¡Cargado en la mesa de trade!');
+        }
         log(`Pokémon configurado: ${payload.nickname} (Nivel ${payload.level})`);
+      }).catch(err => {
+        showToast('Error al enviar configuración');
       });
     }
 
     function returnModifiedPokemon() {
+      const recItem = document.getElementById('rec_item');
       const payload = {
         level: parseInt(document.getElementById('rec_level').value),
         nickname: document.getElementById('rec_nick').value,
@@ -1022,16 +1042,23 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
         m2: parseInt(document.getElementById('rec_m2').value) || 0,
         m3: parseInt(document.getElementById('rec_m3').value) || 0,
         shiny: document.getElementById('rec_shiny').checked,
-        item: 0
+        item: recItem ? (parseInt(recItem.value) || 0) : 0
       };
 
       fetch('/api/return_traded', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload)
-      }).then(() => {
-        showToast('¡Preparado para devolver a Game Boy!');
+      }).then(res => res.json()).then(data => {
+        if (data && data.in_table) {
+          showToast('⚠️ Devolución lista. Como tu Game Boy está en la mesa, pulsa B y vuelve a sentarte para actualizar.');
+          log('⚠️ Atención: Game Boy en la mesa de trade. Pulsa B en la consola y vuelve a interactuar con la mesa para descargar los nuevos datos.');
+        } else {
+          showToast('¡Preparado para devolver a Game Boy!');
+        }
         log(`Devolución preparada: ${payload.nickname}`);
+      }).catch(err => {
+        showToast('Error al preparar devolución');
       });
     }
 
