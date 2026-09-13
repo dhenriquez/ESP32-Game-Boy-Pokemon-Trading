@@ -2,6 +2,7 @@
 #include "web_assets.h"
 #include "pokemon_sprites.h"
 #include "logo_data.h"
+#include "bills_pc_storage.h"
 
 WebServerManager WebManager;
 
@@ -88,8 +89,8 @@ void WebServerManager::setupRoutes() {
                 uint8_t species = doc["species"] | 0;
                 uint8_t level = doc["level"] | 50;
                 const char* nickname = doc["nickname"] | "";
-                const char* ot_name = doc["ot_name"] | "ESP32";
-                uint16_t ot_id = doc["ot_id"] | 42069;
+                const char* ot_name = doc["ot_name"] | "DHNRQZ";
+                uint16_t ot_id = doc["ot_id"] | 20487;
                 uint8_t m0 = doc["m0"] | 0;
                 uint8_t m1 = doc["m1"] | 0;
                 uint8_t m2 = doc["m2"] | 0;
@@ -139,6 +140,92 @@ void WebServerManager::setupRoutes() {
             } else {
                 request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
             }
+        }
+    );
+
+    // API: Bill's PC - Get all stored Pokémon
+    _server.on("/api/pc", HTTP_GET, [](AsyncWebServerRequest* request) {
+        String json = BillsPC.getAllAsJson();
+        request->send(200, "application/json", json);
+    });
+
+    // API: Bill's PC - Export JSON file
+    _server.on("/api/pc/export", HTTP_GET, [](AsyncWebServerRequest* request) {
+        String json = BillsPC.getAllAsJson();
+        AsyncWebServerResponse *response = request->beginResponse(200, "application/json", json);
+        response->addHeader("Content-Disposition", "attachment; filename=\"bills_pc_backup.json\"");
+        request->send(response);
+    });
+
+    // API: Bill's PC - Import JSON file
+    _server.on("/api/pc/import", HTTP_POST, [](AsyncWebServerRequest* request) {}, NULL,
+        [](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+            String body = String((char*)data).substring(0, len);
+            if (BillsPC.importJson(body)) {
+                request->send(200, "application/json", "{\"success\":true}");
+            } else {
+                request->send(400, "application/json", "{\"error\":\"Failed to import JSON\"}");
+            }
+        }
+    );
+
+    // API: Bill's PC - Clear all
+    _server.on("/api/pc/clear", HTTP_POST, [](AsyncWebServerRequest* request) {
+        if (BillsPC.clearAll()) {
+            request->send(200, "application/json", "{\"success\":true}");
+        } else {
+            request->send(500, "application/json", "{\"error\":\"Failed to clear PC\"}");
+        }
+    });
+
+    // API: Bill's PC - Load a Pokémon to Trade
+    _server.on("/api/pc/load", HTTP_POST, [](AsyncWebServerRequest* request) {}, NULL,
+        [](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+            JsonDocument doc;
+            DeserializationError err = deserializeJson(doc, data, len);
+            if (!err && doc["id"].is<const char*>()) {
+                const char* id = doc["id"];
+                if (BillsPC.loadPokemonToTrade(id)) {
+                    bool in_table = TradeEngine.isAtTradeTable();
+                    char resp[64];
+                    snprintf(resp, sizeof(resp), "{\"success\":true,\"in_table\":%s}", in_table ? "true" : "false");
+                    request->send(200, "application/json", resp);
+                    return;
+                }
+            }
+            request->send(400, "application/json", "{\"error\":\"Failed to load Pokémon to trade\"}");
+        }
+    );
+
+    // API: Bill's PC - Update a Pokémon in PC
+    _server.on("/api/pc/update", HTTP_POST, [](AsyncWebServerRequest* request) {}, NULL,
+        [](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+            JsonDocument doc;
+            DeserializationError err = deserializeJson(doc, data, len);
+            if (!err && doc["id"].is<const char*>()) {
+                const char* id = doc["id"];
+                if (BillsPC.updatePokemon(id, doc)) {
+                    request->send(200, "application/json", "{\"success\":true}");
+                    return;
+                }
+            }
+            request->send(400, "application/json", "{\"error\":\"Failed to update Pokémon\"}");
+        }
+    );
+
+    // API: Bill's PC - Delete a Pokémon from PC
+    _server.on("/api/pc/delete", HTTP_POST, [](AsyncWebServerRequest* request) {}, NULL,
+        [](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+            JsonDocument doc;
+            DeserializationError err = deserializeJson(doc, data, len);
+            if (!err && doc["id"].is<const char*>()) {
+                const char* id = doc["id"];
+                if (BillsPC.deletePokemon(id)) {
+                    request->send(200, "application/json", "{\"success\":true}");
+                    return;
+                }
+            }
+            request->send(400, "application/json", "{\"error\":\"Failed to delete Pokémon\"}");
         }
     );
 

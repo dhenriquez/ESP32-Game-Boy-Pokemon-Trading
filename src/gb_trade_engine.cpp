@@ -121,8 +121,8 @@ void GBTradeEngine::setGeneration(uint8_t gen, bool reset_link) {
     uint8_t species = 0;
     uint8_t level = 50;
     char nickname[LEN_NICKNAME] = {0};
-    char ot_name[LEN_OT_NAME] = {0};
-    uint16_t ot_id = 42069;
+    char ot_name[LEN_OT_NAME] = "DHNRQZ";
+    uint16_t ot_id = 20487;
     uint8_t m0 = 0, m1 = 0, m2 = 0, m3 = 0;
     uint8_t item = 0;
     bool shiny = false;

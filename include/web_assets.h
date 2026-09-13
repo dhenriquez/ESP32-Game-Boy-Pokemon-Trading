@@ -134,8 +134,8 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
     .tabs {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
       margin-bottom: 14px;
     }
     .tab-btn {
@@ -358,9 +358,121 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
       opacity: 0;
       pointer-events: none;
     }
-    .toast.show {
-      transform: translateX(-50%) translateY(0);
-      opacity: 1;
+    /* Bill's PC Storage Styles */
+    .pc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .pc-card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+      transition: all 0.2s;
+    }
+    .pc-card:hover {
+      border-color: rgba(255, 203, 5, 0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+    }
+    .pc-card-sprite {
+      width: 64px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 6px;
+    }
+    .pc-card-sprite img {
+      width: 56px;
+      height: 56px;
+      image-rendering: pixelated;
+    }
+    .pc-card-name {
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: #fff;
+    }
+    .pc-card-meta {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin: 2px 0 8px 0;
+    }
+    .pc-gen-tag {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+    .gen-1-tag { background: rgba(238, 21, 21, 0.2); color: #f87171; border: 1px solid rgba(238, 21, 21, 0.4); }
+    .gen-2-tag { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+    .gen-2-migrated { background: rgba(234, 179, 8, 0.2); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.4); }
+    .pc-card-actions {
+      display: flex;
+      gap: 5px;
+      width: 100%;
+      margin-top: auto;
+    }
+    .pc-btn {
+      flex: 1;
+      padding: 6px 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .pc-btn-trade { background: rgba(255, 203, 5, 0.15); color: var(--poke-yellow); border-color: rgba(255, 203, 5, 0.3); }
+    .pc-btn-trade:hover { background: var(--poke-yellow); color: #000; }
+    .pc-btn-edit { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); }
+    .pc-btn-edit:hover { background: #3b82f6; color: #fff; }
+    .pc-btn-del { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
+    .pc-btn-del:hover { background: #ef4444; color: #fff; }
+
+    /* Modal styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 150;
+      padding: 14px;
+    }
+    .modal-overlay.active { display: flex; animation: fadeIn 0.2s ease-out; }
+    .modal-content {
+      background: #1a202c;
+      border: 1px solid var(--card-border-glow);
+      border-radius: 16px;
+      max-width: 500px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+    }
+    .time-capsule-alert {
+      background: rgba(234, 179, 8, 0.15);
+      border: 1px solid rgba(234, 179, 8, 0.5);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #fef08a;
+      font-size: 0.78rem;
+      margin-bottom: 14px;
+      display: none;
+      line-height: 1.4;
     }
   </style>
 </head>
@@ -385,6 +497,7 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('tab-inject', this)">⚡ Enviar</button>
       <button class="tab-btn" onclick="switchTab('tab-receive', this)">🔄 Recibido</button>
+      <button class="tab-btn" onclick="switchTab('tab-pc', this)">💻 Bill's PC</button>
       <button class="tab-btn" onclick="switchTab('tab-monitor', this)">📡 Monitor</button>
       <button class="tab-btn" onclick="switchTab('tab-config', this)">⚙️ Ajustes</button>
     </div>
@@ -440,14 +553,14 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
             </div>
             <div class="form-group">
               <label>Entrenador Original (OT)</label>
-              <input type="text" id="ot_name" maxlength="7" value="ESP32">
+              <input type="text" id="ot_name" maxlength="7" value="DHNRQZ">
             </div>
           </div>
 
           <div class="grid-2">
             <div class="form-group">
               <label>ID Entrenador (OT ID)</label>
-              <input type="number" id="ot_id" min="0" max="65535" value="42069">
+              <input type="number" id="ot_id" min="0" max="65535" value="20487">
             </div>
             <div class="form-group">
               <label>Presets IV / EV</label>
@@ -576,6 +689,80 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
       </div>
     </div>
 
+    <!-- TAB: BILL'S PC -->
+    <div id="tab-pc" class="tab-pane">
+      <div class="card">
+        <div class="card-title" style="justify-content: space-between;">
+          <span>💻 Bill's PC Storage</span>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-secondary" style="width:auto; padding:5px 10px; font-size:0.75rem;" onclick="loadBillsPC()">🔄 Actualizar</button>
+            <button class="btn btn-secondary" style="width:auto; padding:5px 10px; font-size:0.75rem;" onclick="exportBillsPC()">📥 Exportar</button>
+            <button class="btn btn-secondary" style="width:auto; padding:5px 10px; font-size:0.75rem;" onclick="document.getElementById('pcImportInput').click()">📤 Importar</button>
+            <input type="file" id="pcImportInput" accept=".json" style="display:none;" onchange="importBillsPC(event)">
+          </div>
+        </div>
+        <div id="pcEmptyNotice" style="text-align:center; padding:30px 10px; color:var(--text-muted);">
+          No hay Pokémon almacenados aún en Bill's PC.<br>
+          <span style="font-size:0.8rem;">Los Pokémon recibidos en intercambios aparecerán aquí automáticamente.</span>
+        </div>
+        <div class="pc-grid" id="pcGrid"></div>
+      </div>
+    </div>
+
+    <!-- MODAL: EDITAR POKÉMON EN BILL'S PC -->
+    <div class="modal-overlay" id="pcModal">
+      <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <h3 id="modalTitle" style="color:var(--poke-yellow); font-size:1.05rem;">✏️ Modificar Pokémon</h3>
+          <button onclick="closePCModal()" style="background:transparent; border:none; color:#fff; font-size:1.3rem; cursor:pointer;">&times;</button>
+        </div>
+
+        <div id="timeCapsuleWarning" class="time-capsule-alert">
+          ⚠️ <strong>Advertencia de Cápsula del Tiempo:</strong><br>
+          Este Pokémon provino de Generación I, pero al tener un ítem equipado o movimientos exclusivos de Generación II, <strong>ya no podrá devolverse a cartuchos de Gen I (R/B/Y)</strong> y quedará configurado para Gen II.
+        </div>
+
+        <input type="hidden" id="modal_pkmn_id">
+        <input type="hidden" id="modal_origin_gen">
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Mote (Nickname)</label>
+            <input type="text" id="modal_nick" maxlength="10">
+          </div>
+          <div class="form-group">
+            <label>Nivel (1 - 100)</label>
+            <input type="number" id="modal_level" min="1" max="100">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Movimientos</label>
+          <div class="grid-2">
+            <select id="modal_m0" onchange="checkTimeCapsuleRules()"></select>
+            <select id="modal_m1" onchange="checkTimeCapsuleRules()"></select>
+            <select id="modal_m2" onchange="checkTimeCapsuleRules()"></select>
+            <select id="modal_m3" onchange="checkTimeCapsuleRules()"></select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Ítem Equipado (Gen II)</label>
+          <select id="modal_item" onchange="checkTimeCapsuleRules()"></select>
+        </div>
+
+        <div class="switch-label" style="margin: 12px 0;">
+          <span>✨ Shiny</span>
+          <input type="checkbox" id="modal_shiny" style="width:20px; height:20px;">
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button type="button" class="btn btn-secondary" onclick="closePCModal()">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="savePCModalChanges()">💾 Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+
     <!-- TAB 3: MONITOR -->
     <div id="tab-monitor" class="tab-pane">
       <div class="card">
@@ -647,22 +834,23 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
     }
 
     function populateMovesSelect(gen) {
-      const moveSelectIds = ['m0', 'm1', 'm2', 'm3', 'rec_m0', 'rec_m1', 'rec_m2', 'rec_m3'];
+      const moveSelectIds = ['m0', 'm1', 'm2', 'm3', 'rec_m0', 'rec_m1', 'rec_m2', 'rec_m3', 'modal_m0', 'modal_m1', 'modal_m2', 'modal_m3'];
       moveSelectIds.forEach(id => {
         const sel = document.getElementById(id);
         if (!sel) return;
         const prev = parseInt(sel.value) || 0;
         sel.innerHTML = "";
         ALL_MOVES.forEach(m => {
-          if (gen === 1 && m.gen !== 1) return;
+          // Allow all moves in modal so user can choose or trigger Time Capsule warning
+          if (gen === 1 && m.gen !== 1 && !id.startsWith('modal_')) return;
           const opt = document.createElement("option");
           opt.value = m.id;
-          opt.textContent = m.id === 0 ? "No Move" : `${m.name} (#${m.id})`;
+          opt.textContent = m.id === 0 ? "No Move" : `${m.name} (#${m.id})${m.gen === 2 ? ' [Gen II]' : ''}`;
           if (m.id === prev) opt.selected = true;
           sel.appendChild(opt);
         });
         if (prev !== 0) {
-          const valid = ALL_MOVES.find(m => m.id === prev && (gen !== 1 || m.gen === 1));
+          const valid = ALL_MOVES.find(m => m.id === prev && (gen !== 1 || m.gen === 1 || id.startsWith('modal_')));
           sel.value = valid ? prev : 0;
         }
       });
@@ -692,7 +880,7 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
     }
 
     function populateItemsSelect() {
-      ['item', 'rec_item'].forEach(id => {
+      ['item', 'rec_item', 'modal_item'].forEach(id => {
         const sel = document.getElementById(id);
         if (!sel) return;
         const prev = parseInt(sel.value) || 0;
@@ -850,7 +1038,8 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
         switchTab('tab-receive', document.querySelectorAll('.tab-btn')[1]);
 
         log(`📥 Recibido de Game Boy: ${data.name} (Lvl ${data.level})${data.shiny ? ' ✨ Shiny' : ''}${itemStr}`);
-        showToast(`¡${data.name} recibido de Game Boy listo para editar o devolver!`);
+        showToast(`¡${data.name} recibido de Game Boy guardado en Bill's PC!`);
+        loadBillsPC();
       }
     }
 
@@ -1062,6 +1251,246 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
       });
     }
 
+    // BILL'S PC CLIENT LOGIC
+    let pcData = [];
+
+    function loadBillsPC() {
+      fetch('/api/pc')
+        .then(res => res.json())
+        .then(data => {
+          pcData = Array.isArray(data) ? data : [];
+          renderPCGrid();
+        })
+        .catch(err => {
+          console.error("Error loading Bill's PC", err);
+        });
+    }
+
+    function renderPCGrid() {
+      const grid = document.getElementById('pcGrid');
+      const notice = document.getElementById('pcEmptyNotice');
+      if (!grid) return;
+      grid.innerHTML = "";
+
+      if (!pcData || pcData.length === 0) {
+        if (notice) notice.style.display = 'block';
+        return;
+      }
+      if (notice) notice.style.display = 'none';
+
+      pcData.slice().reverse().forEach(pkmn => {
+        const card = document.createElement('div');
+        card.className = 'pc-card';
+
+        const spNum = String(pkmn.species || 1).padStart(3, '0');
+        const originGen = pkmn.origin_gen || 1;
+        const targetGen = pkmn.target_gen || originGen;
+
+        let genTagClass = originGen === 1 ? 'gen-1-tag' : 'gen-2-tag';
+        let genTagText = `ORIGIN: GEN ${originGen === 1 ? 'I' : 'II'}`;
+        if (originGen === 1 && targetGen === 2) {
+          genTagClass = 'gen-2-migrated';
+          genTagText = 'GEN I ➔ GEN II';
+        }
+
+        const itemObj = GEN2_ITEMS.find(it => it.id === pkmn.item);
+        const itemStr = (itemObj && itemObj.id > 0) ? ` • 🎒 ${itemObj.name}` : '';
+
+        card.innerHTML = `
+          <div class="pc-card-sprite">
+            <img src="/sprites/${spNum}.png" onerror="this.src='/sprites/000.png'" alt="${pkmn.name}">
+          </div>
+          <span class="pc-gen-tag ${genTagClass}">${genTagText}</span>
+          <div class="pc-card-name">${pkmn.nickname || pkmn.name}${pkmn.shiny ? ' ✨' : ''}</div>
+          <div class="pc-card-meta">
+            Nv. ${pkmn.level} • #${spNum}<br>
+            Player: ${pkmn.trainer_name || 'DESCONOCIDO'}<br>
+            OT: ${pkmn.ot_name || 'DHNRQZ'} (${pkmn.ot_id || 20487})${itemStr}
+          </div>
+          <div class="pc-card-actions">
+            <button class="pc-btn pc-btn-trade" onclick="loadPokemonFromPC('${pkmn.id}')" title="Cargar como oferta de Trade">⚡ Trade</button>
+            <button class="pc-btn pc-btn-edit" onclick="openPCModal('${pkmn.id}')" title="Modificar Pokémon">✎ Edit</button>
+            <button class="pc-btn pc-btn-del" onclick="deletePokemonFromPC('${pkmn.id}')" title="Eliminar">🗑️</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function openPCModal(id) {
+      const pkmn = pcData.find(p => p.id === id);
+      if (!pkmn) return;
+
+      document.getElementById('modal_pkmn_id').value = pkmn.id;
+      document.getElementById('modal_origin_gen').value = pkmn.origin_gen || 1;
+      document.getElementById('modalTitle').textContent = `✏️ Modificar ${pkmn.name} (#${String(pkmn.species).padStart(3, '0')})`;
+      document.getElementById('modal_nick').value = pkmn.nickname || pkmn.name;
+      document.getElementById('modal_level').value = pkmn.level;
+      document.getElementById('modal_shiny').checked = !!pkmn.shiny;
+
+      populateMovesSelect(2); // Populate all moves to allow selection
+      populateItemsSelect();
+
+      const moves = pkmn.moves || [0, 0, 0, 0];
+      document.getElementById('modal_m0').value = moves[0] || 0;
+      document.getElementById('modal_m1').value = moves[1] || 0;
+      document.getElementById('modal_m2').value = moves[2] || 0;
+      document.getElementById('modal_m3').value = moves[3] || 0;
+      document.getElementById('modal_item').value = pkmn.item || 0;
+
+      checkTimeCapsuleRules();
+      document.getElementById('pcModal').classList.add('active');
+    }
+
+    function closePCModal() {
+      document.getElementById('pcModal').classList.remove('active');
+    }
+
+    function checkTimeCapsuleRules() {
+      const originGen = parseInt(document.getElementById('modal_origin_gen').value) || 1;
+      const warnBox = document.getElementById('timeCapsuleWarning');
+      if (originGen !== 1) {
+        warnBox.style.display = 'none';
+        return;
+      }
+
+      const item = parseInt(document.getElementById('modal_item').value) || 0;
+      const m0 = parseInt(document.getElementById('modal_m0').value) || 0;
+      const m1 = parseInt(document.getElementById('modal_m1').value) || 0;
+      const m2 = parseInt(document.getElementById('modal_m2').value) || 0;
+      const m3 = parseInt(document.getElementById('modal_m3').value) || 0;
+
+      const hasGen2Move = (m0 > 165 || m1 > 165 || m2 > 165 || m3 > 165);
+      const hasGen2Item = (item > 0);
+
+      if (hasGen2Move || hasGen2Item) {
+        warnBox.style.display = 'block';
+      } else {
+        warnBox.style.display = 'none';
+      }
+    }
+
+    function savePCModalChanges() {
+      const id = document.getElementById('modal_pkmn_id').value;
+      const payload = {
+        id: id,
+        nickname: document.getElementById('modal_nick').value,
+        level: parseInt(document.getElementById('modal_level').value) || 50,
+        shiny: document.getElementById('modal_shiny').checked,
+        item: parseInt(document.getElementById('modal_item').value) || 0,
+        moves: [
+          parseInt(document.getElementById('modal_m0').value) || 0,
+          parseInt(document.getElementById('modal_m1').value) || 0,
+          parseInt(document.getElementById('modal_m2').value) || 0,
+          parseInt(document.getElementById('modal_m3').value) || 0
+        ]
+      };
+
+      fetch('/api/pc/update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success) {
+          showToast('¡Pokémon actualizado en Bill\'s PC!');
+          closePCModal();
+          loadBillsPC();
+        } else {
+          showToast('Error al actualizar en Bill\'s PC');
+        }
+      })
+      .catch(err => {
+        showToast('Error de conexión al actualizar');
+      });
+    }
+
+    function loadPokemonFromPC(id) {
+      const pkmn = pcData.find(p => p.id === id);
+      if (!pkmn) return;
+
+      fetch('/api/pc/load', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: id})
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success) {
+          if (data.in_table) {
+            showToast(`⚠️ ${pkmn.nickname || pkmn.name} cargado. Pulsa B en Game Boy y vuelve a interactuar con la mesa.`);
+          } else {
+            showToast(`¡${pkmn.nickname || pkmn.name} cargado para trade!`);
+          }
+          log(`Pokémon de Bill's PC cargado para trade: ${pkmn.nickname || pkmn.name} (Gen ${pkmn.target_gen || pkmn.origin_gen})`);
+          switchTab('tab-inject', document.querySelectorAll('.tab-btn')[0]);
+        } else {
+          showToast('Error al cargar Pokémon para trade');
+        }
+      })
+      .catch(err => {
+        showToast('Error de comunicación');
+      });
+    }
+
+    function deletePokemonFromPC(id) {
+      const pkmn = pcData.find(p => p.id === id);
+      const name = pkmn ? (pkmn.nickname || pkmn.name) : 'Pokémon';
+      if (!confirm(`¿Eliminar a ${name} de Bill's PC?`)) return;
+
+      fetch('/api/pc/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: id})
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success) {
+          showToast(`¡${name} eliminado de Bill's PC!`);
+          loadBillsPC();
+        } else {
+          showToast('Error al eliminar Pokémon');
+        }
+      })
+      .catch(err => {
+        showToast('Error de conexión');
+      });
+    }
+
+    function exportBillsPC() {
+      window.location.href = '/api/pc/export';
+    }
+
+    function importBillsPC(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target.result;
+        fetch('/api/pc/import', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: content
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.success) {
+            showToast('¡Colección importada con éxito!');
+            loadBillsPC();
+          } else {
+            showToast('Error: archivo JSON inválido');
+          }
+        })
+        .catch(err => {
+          showToast('Error al importar archivo');
+        });
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
     window.onload = () => {
       populateSpeciesSelect();
       populateItemsSelect();
@@ -1069,6 +1498,7 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
       applyPreset('gengar');
       initWS();
       updatePreview();
+      loadBillsPC();
     };
   </script>
 </body>
