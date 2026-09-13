@@ -696,9 +696,8 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
           <span>💻 Bill's PC Storage</span>
           <div style="display:flex; gap:6px;">
             <button class="btn btn-secondary" style="width:auto; padding:5px 10px; font-size:0.75rem;" onclick="loadBillsPC()">🔄 Actualizar</button>
-            <button class="btn btn-secondary" style="width:auto; padding:5px 10px; font-size:0.75rem;" onclick="exportBillsPC()">📥 Exportar</button>
-            <button class="btn btn-secondary" style="width:auto; padding:5px 10px; font-size:0.75rem;" onclick="document.getElementById('pcImportInput').click()">📤 Importar</button>
-            <input type="file" id="pcImportInput" accept=".json" style="display:none;" onchange="importBillsPC(event)">
+            <button class="btn btn-secondary" style="width:auto; padding:5px 10px; font-size:0.75rem;" onclick="openExportModal()">📥 Exportar</button>
+            <button class="btn btn-secondary" style="width:auto; padding:5px 10px; font-size:0.75rem;" onclick="openImportModal()">📤 Importar</button>
           </div>
         </div>
         <div id="pcEmptyNotice" style="text-align:center; padding:30px 10px; color:var(--text-muted);">
@@ -759,6 +758,58 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <div style="display:flex; gap:10px; margin-top:16px;">
           <button type="button" class="btn btn-secondary" onclick="closePCModal()">Cancelar</button>
           <button type="button" class="btn btn-primary" onclick="savePCModalChanges()">💾 Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: EXPORTAR BACKUP BILL'S PC -->
+    <div class="modal-overlay" id="exportModal">
+      <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <h3 style="color:var(--poke-yellow); font-size:1.05rem;">📥 Exportar Backup de Bill's PC</h3>
+          <button onclick="closeExportModal()" style="background:transparent; border:none; color:#fff; font-size:1.3rem; cursor:pointer;">&times;</button>
+        </div>
+
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">
+          Puedes copiar directamente el texto JSON al portapapeles o descargarlo como archivo según tu navegador:
+        </p>
+
+        <div class="form-group">
+          <textarea id="exportJsonArea" readonly style="width:100%; height:160px; background:#0f172a; color:#38ef7d; font-family:'Courier New', monospace; font-size:0.75rem; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); resize:none;"></textarea>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
+          <button type="button" class="btn btn-primary" onclick="copyExportJson()">📋 Copiar JSON al Portapapeles</button>
+          <button type="button" class="btn btn-secondary" onclick="triggerDirectDownload()">💾 Descargar como archivo .json</button>
+          <button type="button" class="btn btn-secondary" style="background:transparent; border-color:transparent;" onclick="closeExportModal()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: IMPORTAR BACKUP BILL'S PC -->
+    <div class="modal-overlay" id="importModal">
+      <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <h3 style="color:var(--poke-yellow); font-size:1.05rem;">📤 Importar a Bill's PC</h3>
+          <button onclick="closeImportModal()" style="background:transparent; border:none; color:#fff; font-size:1.3rem; cursor:pointer;">&times;</button>
+        </div>
+
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">
+          Pega el texto JSON de tu backup a continuación (ideal para ventanas emergentes):
+        </p>
+
+        <div class="form-group">
+          <textarea id="importJsonArea" placeholder='Pega tu array JSON aquí: [ {"species": 94, "nickname": "GENGAR", ...} ]' style="width:100%; height:160px; background:#0f172a; color:#fff; font-family:'Courier New', monospace; font-size:0.75rem; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); resize:none;"></textarea>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <span style="font-size:0.75rem; color:var(--text-muted);">O selecciona un archivo si tu navegador lo permite:</span>
+          <input type="file" id="modalFileInput" accept=".json,application/json,text/plain" style="margin-top:6px; font-size:0.78rem;" onchange="handleModalFileSelect(event)">
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-secondary" onclick="closeImportModal()">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="submitImportJson()">📥 Guardar e Importar</button>
         </div>
       </div>
     </div>
@@ -1458,38 +1509,114 @@ static const char INDEX_HTML[] PROGMEM = R"rawliteral(
       });
     }
 
-    function exportBillsPC() {
+    function openExportModal() {
+      const area = document.getElementById('exportJsonArea');
+      area.value = 'Cargando datos de Bill\'s PC...';
+      document.getElementById('exportModal').classList.add('active');
+      fetch('/api/pc')
+        .then(res => res.json())
+        .then(data => {
+          area.value = JSON.stringify(data, null, 2);
+        })
+        .catch(err => {
+          area.value = 'Error al cargar datos de Bill\'s PC';
+        });
+    }
+
+    function closeExportModal() {
+      document.getElementById('exportModal').classList.remove('active');
+    }
+
+    function copyExportJson() {
+      const area = document.getElementById('exportJsonArea');
+      if (!area.value) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(area.value).then(() => {
+          showToast('¡JSON copiado al portapapeles!');
+        }).catch(() => {
+          fallbackCopyText(area);
+        });
+      } else {
+        fallbackCopyText(area);
+      }
+    }
+
+    function fallbackCopyText(area) {
+      area.focus();
+      area.select();
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          showToast('¡JSON copiado al portapapeles!');
+        } else {
+          showToast('Selecciona el texto para copiarlo.');
+        }
+      } catch (err) {
+        showToast('Selecciona el texto para copiarlo.');
+      }
+    }
+
+    function triggerDirectDownload() {
       window.location.href = '/api/pc/export';
     }
 
-    function importBillsPC(event) {
+    function openImportModal() {
+      document.getElementById('importJsonArea').value = '';
+      const fileInput = document.getElementById('modalFileInput');
+      if (fileInput) fileInput.value = '';
+      document.getElementById('importModal').classList.add('active');
+    }
+
+    function closeImportModal() {
+      document.getElementById('importModal').classList.remove('active');
+    }
+
+    function handleModalFileSelect(event) {
       const file = event.target.files[0];
       if (!file) return;
-
       const reader = new FileReader();
       reader.onload = (e) => {
-        const content = e.target.result;
-        fetch('/api/pc/import', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: content
-        })
-        .then(res => res.json())
-        .then(data => {
-          if (data && data.success) {
-            showToast('¡Colección importada con éxito!');
-            loadBillsPC();
-          } else {
-            showToast('Error: archivo JSON inválido');
-          }
-        })
-        .catch(err => {
-          showToast('Error al importar archivo');
-        });
+        document.getElementById('importJsonArea').value = e.target.result;
       };
       reader.readAsText(file);
-      event.target.value = '';
     }
+
+    function submitImportJson() {
+      const content = document.getElementById('importJsonArea').value.trim();
+      if (!content) {
+        showToast('Por favor pega o carga el contenido JSON');
+        return;
+      }
+      try {
+        JSON.parse(content);
+      } catch (e) {
+        showToast('Error: El formato JSON no es válido');
+        return;
+      }
+
+      fetch('/api/pc/import', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: content
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success) {
+          showToast('¡Colección importada con éxito!');
+          closeImportModal();
+          loadBillsPC();
+        } else {
+          showToast('Error al importar: ' + (data.error || 'JSON inválido'));
+        }
+      })
+      .catch(err => {
+        showToast('Error de red al importar archivo');
+      });
+    }
+
+    // Compatibilidad backward
+    function exportBillsPC() { openExportModal(); }
+    function importBillsPC(event) { openImportModal(); }
 
     window.onload = () => {
       populateSpeciesSelect();

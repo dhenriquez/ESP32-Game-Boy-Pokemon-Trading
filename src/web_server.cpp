@@ -160,11 +160,31 @@ void WebServerManager::setupRoutes() {
     // API: Bill's PC - Import JSON file
     _server.on("/api/pc/import", HTTP_POST, [](AsyncWebServerRequest* request) {}, NULL,
         [](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
-            String body = String((char*)data).substring(0, len);
-            if (BillsPC.importJson(body)) {
-                request->send(200, "application/json", "{\"success\":true}");
-            } else {
-                request->send(400, "application/json", "{\"error\":\"Failed to import JSON\"}");
+            if (index == 0) {
+                request->_tempObject = new String();
+                if (request->_tempObject) {
+                    ((String*)request->_tempObject)->reserve(total);
+                }
+            }
+            if (request->_tempObject) {
+                String* str = (String*)request->_tempObject;
+                for (size_t i = 0; i < len; i++) {
+                    *str += (char)data[i];
+                }
+            }
+            if (index + len >= total) {
+                String* body = (String*)request->_tempObject;
+                bool ok = false;
+                if (body) {
+                    ok = BillsPC.importJson(*body);
+                    delete body;
+                    request->_tempObject = NULL;
+                }
+                if (ok) {
+                    request->send(200, "application/json", "{\"success\":true}");
+                } else {
+                    request->send(400, "application/json", "{\"error\":\"Failed to import JSON\"}");
+                }
             }
         }
     );
