@@ -216,4 +216,4 @@
  include/gb_trade_engine.h include/pokemon_data.h include/named_list.h \
  include/stat_nl.h include/pokemon_table.h include/stats.h \
  include/patch_list.h include/gb_link_driver.h include/web_assets.h \
- include/pokemon_sprites.h include/logo_data.h
+ include/pokemon_sprites.h include/logo_data.h include/bills_pc_storage.h

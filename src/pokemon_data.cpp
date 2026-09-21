@@ -67,9 +67,9 @@ PokemonData* pokemon_data_alloc(uint8_t gen) {
         break;
     }
 
-    pokemon_name_set(pdata, STAT_TRAINER_NAME, "ESP32");
-    pokemon_name_set(pdata, STAT_OT_NAME, "ESP32");
-    pokemon_stat_set(pdata, STAT_OT_ID, NONE, 42069);
+    pokemon_name_set(pdata, STAT_TRAINER_NAME, "DHNRQZ");
+    pokemon_name_set(pdata, STAT_OT_NAME, "DHNRQZ");
+    pokemon_stat_set(pdata, STAT_OT_ID, NONE, 20487);
 
     pokemon_stat_set(pdata, STAT_NUM, NONE, 0); // Bulbasaur / Chikorita
     pokemon_stat_set(pdata, STAT_LEVEL, NONE, 5);

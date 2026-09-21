@@ -4,6 +4,7 @@
 #include "wifi_portal.h"
 #include "web_server.h"
 #include "gb_trade_engine.h"
+#include "bills_pc_storage.h"
 
 // Task for Core 0 handling Web and DNS processing
 void networkTask(void* parameter) {
@@ -58,9 +59,11 @@ void setStatusLedColor(GBVisualStatus status) {
 void onTradeEngineEvent(GBVisualStatus status, const char* msg) {
     WebManager.broadcastStatus(status, msg);
 
-    // If trade completed successfully, also broadcast received pokemon details
+    // If trade completed successfully, also broadcast received pokemon details and save to Bill's PC
     if (status == STATUS_TRADE_SUCCESS) {
-        WebManager.broadcastReceivedPokemon(TradeEngine.getReceivedPokemonData());
+        PokemonData* receivedData = TradeEngine.getReceivedPokemonData();
+        WebManager.broadcastReceivedPokemon(receivedData);
+        BillsPC.saveReceivedPokemon(receivedData);
     }
 
     setStatusLedColor(status);
@@ -81,6 +84,9 @@ void setup() {
     digitalWrite(PIN_STATUS_LED, HIGH);
     #endif
     #endif
+
+    // Initialize LittleFS Bill's PC Storage
+    BillsPC.begin();
 
     // Initialize Trade Engine and Link Driver
     TradeEngine.setEventCallback(onTradeEngineEvent);
